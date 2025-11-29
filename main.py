@@ -18,6 +18,7 @@ BEFORE RUNNING:
 
 import argparse
 import json
+import os
 import random
 import subprocess
 import sys
@@ -25,6 +26,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+from dotenv import load_dotenv
+from google import genai  # type: ignore[import-untyped]
 import undetected_chromedriver as uc  # type: ignore[import-untyped]
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -34,63 +37,27 @@ from selenium.common.exceptions import TimeoutException, WebDriverException
 
 import config
 
+# Load environment variables from .env file
+load_dotenv()
+
+# Initialize Gemini client
+_google_api_key = os.environ.get("GOOGLE_API_KEY", "")
+gemini_client: genai.Client | None = None
+if _google_api_key:
+    gemini_client = genai.Client(api_key=_google_api_key)
+else:
+    print("⚠️  Warning: GOOGLE_API_KEY not set. LLM analysis will be skipped.")
+
 
 # Directory for this script's dedicated Chrome profiles
 SCRIPT_PROFILES_DIR = Path("./chrome_profiles")
 
 
 def setup_directories():
-    """Create output directories if they don't exist."""
+    """Create output directory if it doesn't exist."""
     config.OUTPUT_DIR.mkdir(exist_ok=True)
-    config.SCREENSHOTS_DIR.mkdir(exist_ok=True)
-    config.HTML_DIR.mkdir(exist_ok=True)
-    config.LOGS_DIR.mkdir(exist_ok=True)
 
 
-def check_rate_limit(account_id: str) -> bool:
-    """
-    Check if we're within rate limits for this account.
-    Returns True if OK to proceed, False if we should wait.
-    """
-    session_log_path = config.LOGS_DIR / f"sessions_{account_id}.jsonl"
-    
-    if not session_log_path.exists():
-        return True
-    
-    today = datetime.now().date()
-    sessions_today = 0
-    last_session_time = None
-    
-    with open(session_log_path, "r") as f:
-        for line in f:
-            try:
-                entry = json.loads(line.strip())
-                session_date = datetime.fromisoformat(entry["started_at"]).date()
-                session_time = datetime.fromisoformat(entry["started_at"])
-                
-                if session_date == today:
-                    sessions_today += 1
-                
-                if last_session_time is None or session_time > last_session_time:
-                    last_session_time = session_time
-            except (json.JSONDecodeError, KeyError):
-                continue
-    
-    # Check daily limit
-    if sessions_today >= config.MAX_SESSIONS_PER_DAY:
-        print(f"⚠️  Rate limit: Already ran {sessions_today} sessions today for {account_id}")
-        print(f"   Max allowed: {config.MAX_SESSIONS_PER_DAY} per day")
-        return False
-    
-    # Check time between sessions
-    if last_session_time:
-        hours_since_last = (datetime.now() - last_session_time).total_seconds() / 3600
-        if hours_since_last < config.MIN_HOURS_BETWEEN_SESSIONS:
-            print(f"⚠️  Rate limit: Only {hours_since_last:.1f} hours since last session")
-            print(f"   Minimum wait: {config.MIN_HOURS_BETWEEN_SESSIONS} hours")
-            return False
-    
-    return True
 
 
 def human_delay(min_sec: float, max_sec: float):
@@ -164,13 +131,6 @@ def create_driver(account_id: str, setup_mode: bool = False):
     options.add_argument("--no-first-run")
     options.add_argument("--no-default-browser-check")
     
-    if config.HEADLESS and not setup_mode:
-        options.add_argument("--headless=new")
-    
-    if config.DISABLE_IMAGES:
-        prefs = {"profile.managed_default_content_settings.images": 2}
-        options.add_experimental_option("prefs", prefs)
-    
     try:
         driver = uc.Chrome(options=options, version_main=None)
         driver.set_window_size(config.VIEWPORT_WIDTH, config.VIEWPORT_HEIGHT)
@@ -212,6 +172,7 @@ def wait_for_shorts_load(driver, timeout: int = 30) -> bool:
 def extract_current_short_metadata(driver) -> dict:
     """
     Extract metadata from the currently visible Short.
+    Uses YouTube Shorts-specific selectors.
     """
     metadata = {
         "url": driver.current_url,
@@ -219,63 +180,57 @@ def extract_current_short_metadata(driver) -> dict:
     }
     
     try:
-        # Try to get video title
+        # Get video title - YouTube Shorts uses this specific class
         title_selectors = [
-            "h2.title",
-            "yt-formatted-string.title",
-            "#title",
-            "[id*='title']"
+            "h2.ytShortsVideoTitleViewModelShortsVideoTitle",
+            "yt-shorts-video-title-view-model h2",
+            "h2.ytShortsVideoTitleViewModelShortsVideoTitle span",
         ]
         for selector in title_selectors:
             elements = driver.find_elements(By.CSS_SELECTOR, selector)
             for el in elements:
                 text = el.text.strip()
-                if text and len(text) > 3:
+                if text and len(text) > 1:
                     metadata["title"] = text
                     break
             if "title" in metadata:
                 break
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"   ⚠️  Title extraction error: {e}")
     
     try:
-        # Try to get channel name
+        # Get channel name - YouTube Shorts uses this specific class
         channel_selectors = [
-            "ytd-channel-name a",
-            "#channel-name a",
-            ".ytd-channel-name",
-            "[id*='channel'] a"
+            ".ytReelChannelBarViewModelChannelName a",
+            "yt-reel-channel-bar-view-model .ytReelChannelBarViewModelChannelName a",
+            ".ytReelChannelBarViewModelChannelName",
         ]
         for selector in channel_selectors:
             elements = driver.find_elements(By.CSS_SELECTOR, selector)
             for el in elements:
                 text = el.text.strip()
-                if text and text.startswith("@"):
-                    metadata["channel"] = text
-                    break
-                elif text and len(text) > 1:
+                if text:
                     metadata["channel"] = text
                     break
             if "channel" in metadata:
                 break
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"   ⚠️  Channel extraction error: {e}")
     
     try:
-        # Try to get description/caption
-        desc_selectors = [
-            "yt-formatted-string#description",
-            ".description",
-            "#description"
+        # Get suggested topic/hashtag if available
+        topic_selectors = [
+            ".ytShortsSuggestedActionViewModelStaticHostPrimaryText span",
+            "yt-shorts-suggested-action-view-model span.yt-core-attributed-string",
         ]
-        for selector in desc_selectors:
+        for selector in topic_selectors:
             elements = driver.find_elements(By.CSS_SELECTOR, selector)
             for el in elements:
                 text = el.text.strip()
                 if text:
-                    metadata["description"] = text[:500]  # Limit length
+                    metadata["topic"] = text
                     break
-            if "description" in metadata:
+            if "topic" in metadata:
                 break
     except Exception:
         pass
@@ -287,6 +242,72 @@ def extract_current_short_metadata(driver) -> dict:
         metadata["video_id"] = video_id
     
     return metadata
+
+
+def is_conflict_related(metadata: dict) -> tuple[bool, str]:
+    """
+    Use LLM to determine if the Short is related to Israel-Palestine conflict.
+    Returns (is_related, reasoning).
+    """
+    if not gemini_client:
+        return False, "no_api_key"
+    
+    title = metadata.get("title", "")
+    channel = metadata.get("channel", "")
+    topic = metadata.get("topic", "")
+    
+    # Skip if we have no content to analyze
+    if not title and not topic:
+        return False, "no_content"
+    
+    # Use topic as description for Shorts (they don't have traditional descriptions)
+    description = f"Topic/Hashtag: {topic}" if topic else "(no description)"
+    
+    prompt = config.CONFLICT_PROMPT.format(
+        title=title or "(no title)",
+        channel=channel or "(unknown)",
+        description=description
+    )
+    
+    try:
+        response = gemini_client.models.generate_content(
+            model=config.GEMINI_MODEL,
+            contents=prompt,
+        )
+        answer = response.text.strip().upper() if response.text else ""
+        is_related = answer == "YES"
+        return is_related, answer
+    except Exception as e:
+        print(f"   ⚠️  LLM error: {e}")
+        return False, f"error: {e}"
+
+
+def click_like_button(driver) -> bool:
+    """
+    Click the like button on the current Short.
+    Returns True if successfully clicked, False otherwise.
+    """
+    try:
+        # Find the like button by aria-label containing "like this video"
+        like_button = driver.find_element(
+            By.CSS_SELECTOR,
+            'button[aria-label*="like this video"]'
+        )
+        
+        # Check if already liked (aria-pressed="true")
+        is_already_liked = like_button.get_attribute("aria-pressed") == "true"
+        if is_already_liked:
+            print("   💙 Already liked")
+            return False
+        
+        # Click the like button
+        like_button.click()
+        print("   ❤️  Liked!")
+        return True
+        
+    except Exception as e:
+        print(f"   ⚠️  Could not click like: {e}")
+        return False
 
 
 def swipe_to_next_short(driver) -> bool:
@@ -322,11 +343,32 @@ def view_shorts(driver, count: int) -> list[dict]:
         # Extract metadata for current Short
         metadata = extract_current_short_metadata(driver)
         metadata["view_index"] = i + 1
-        shorts_data.append(metadata)
         
         video_id = metadata.get("video_id", "unknown")
         channel = metadata.get("channel", "unknown")
-        print(f"   Short {i + 1}/{count} - {video_id} by {channel}")
+        title = metadata.get("title", "")[:50]
+        topic = metadata.get("topic", "")
+        print(f"   Short {i + 1}/{count} - {video_id}")
+        print(f"   👤 Channel: {channel}")
+        print(f"   📝 Title: {title or '(none)'}")
+        if topic:
+            print(f"   🏷️  Topic: {topic}")
+        
+        # Analyze with LLM and like if conflict-related
+        is_related, llm_response = is_conflict_related(metadata)
+        metadata["llm_response"] = llm_response
+        metadata["is_conflict_related"] = is_related
+        
+        if is_related:
+            print("   🎯 Conflict-related! Liking...")
+            human_delay(0.5, 1.5)  # Small delay before clicking
+            liked = click_like_button(driver)
+            metadata["liked"] = liked
+        else:
+            metadata["liked"] = False
+            print("   ⬜ Not conflict-related")
+        
+        shorts_data.append(metadata)
         
         # Human-like viewing delay (watching the Short)
         human_delay(config.SCROLL_DELAY_MIN, config.SCROLL_DELAY_MAX)
@@ -349,39 +391,25 @@ def view_shorts(driver, count: int) -> list[dict]:
     return shorts_data
 
 
-def capture_page(driver, account_id: str, session_id: str, suffix: str = "") -> dict:
-    """
-    Capture screenshot and HTML of the current page state.
-    Returns paths to saved files.
-    """
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+def save_session(account_id: str, session_id: str, shorts_data: list[dict]):
+    """Save session data as a simple JSON file."""
+    # Clean up the shorts data to just what we need
+    clean_data = []
+    for short in shorts_data:
+        clean_data.append({
+            "video_id": short.get("video_id"),
+            "url": short.get("url"),
+            "title": short.get("title"),
+            "channel": short.get("channel"),
+            "topic": short.get("topic"),
+            "is_conflict_related": short.get("is_conflict_related", False),
+            "liked": short.get("liked", False),
+        })
     
-    # Screenshot
-    screenshot_name = f"yt_{account_id}_{session_id}_{timestamp}{suffix}.png"
-    screenshot_path = config.SCREENSHOTS_DIR / screenshot_name
-    driver.save_screenshot(str(screenshot_path))
-    print(f"   📸 Screenshot: {screenshot_path}")
-    
-    # HTML
-    html_name = f"yt_{account_id}_{session_id}_{timestamp}{suffix}.html"
-    html_path = config.HTML_DIR / html_name
-    with open(html_path, "w", encoding="utf-8") as f:
-        f.write(driver.page_source)
-    print(f"   📄 HTML: {html_path}")
-    
-    return {
-        "screenshot": str(screenshot_path),
-        "html": str(html_path),
-        "captured_at": datetime.now().isoformat(),
-    }
-
-
-def log_session(account_id: str, session_data: dict):
-    """Append session data to the account's session log."""
-    log_path = config.LOGS_DIR / f"sessions_{account_id}.jsonl"
-    with open(log_path, "a") as f:
-        f.write(json.dumps(session_data) + "\n")
-    print(f"📝 Session logged: {log_path}")
+    session_file = config.OUTPUT_DIR / f"session_{account_id}_{session_id}.json"
+    with open(session_file, "w") as f:
+        json.dump(clean_data, f, indent=2)
+    print(f"📝 Session saved: {session_file}")
 
 
 def run_capture_session(account_id: str, dry_run: bool = False):
@@ -402,17 +430,11 @@ def run_capture_session(account_id: str, dry_run: bool = False):
     print(f"   Cohort: {account['cohort']}")
     print(f"   Profile: {get_profile_path(account_id)}")
     
-    # Check rate limits
-    if not dry_run and not check_rate_limit(account_id):
-        print("\n⛔ Skipping session due to rate limits")
-        return False
-    
     if dry_run:
         print("\n🧪 DRY RUN - Will open browser but not save data")
     
     # Generate session ID
     session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-    session_start = datetime.now()
     
     driver = None
     success = False
@@ -434,47 +456,21 @@ def run_capture_session(account_id: str, dry_run: bool = False):
         
         print("✅ Shorts loaded!")
         
-        # Initial capture
-        print("\n📸 Capturing initial state...")
-        captures = []
-        if not dry_run:
-            captures.append(capture_page(driver, account_id, session_id, "_start"))
-        
         # View Shorts
         print(f"\n🎬 Viewing Shorts ({config.SHORTS_PER_SESSION} videos)...")
         shorts_data = view_shorts(driver, config.SHORTS_PER_SESSION)
         
-        # Final capture
-        print("\n📸 Capturing final state...")
+        # Save session
         if not dry_run:
-            captures.append(capture_page(driver, account_id, session_id, "_end"))
+            save_session(account_id, session_id, shorts_data)
         
-        # Log session
-        session_end = datetime.now()
-        session_data = {
-            "platform": "youtube_shorts",
-            "account_id": account_id,
-            "cohort": account["cohort"],
-            "session_id": session_id,
-            "started_at": session_start.isoformat(),
-            "ended_at": session_end.isoformat(),
-            "duration_seconds": (session_end - session_start).total_seconds(),
-            "shorts_viewed": len(shorts_data),
-            "captures": captures,
-            "shorts": shorts_data,
-            "config": {
-                "scroll_delay_range": [config.SCROLL_DELAY_MIN, config.SCROLL_DELAY_MAX],
-                "shorts_per_session": config.SHORTS_PER_SESSION,
-            }
-        }
-        
-        if not dry_run:
-            log_session(account_id, session_data)
+        # Count likes
+        liked_count = sum(1 for s in shorts_data if s.get("liked"))
         
         print("\n" + "=" * 60)
         print("✅ Session complete!")
-        print(f"   Duration: {session_data['duration_seconds']:.1f}s")
         print(f"   Shorts viewed: {len(shorts_data)}")
+        print(f"   Liked: {liked_count}")
         print("=" * 60)
         
         success = True
@@ -610,11 +606,6 @@ Examples:
         action="store_true",
         help="List configured accounts and exit"
     )
-    parser.add_argument(
-        "--force", "-f",
-        action="store_true",
-        help="Bypass rate limit checks (use sparingly!)"
-    )
     
     args = parser.parse_args()
     
@@ -637,12 +628,6 @@ Examples:
     if args.setup:
         success = run_setup_mode(args.account)
         sys.exit(0 if success else 1)
-    
-    # If force flag, temporarily increase limits
-    if args.force:
-        print("⚠️  Force mode: bypassing rate limits")
-        config.MAX_SESSIONS_PER_DAY = 999
-        config.MIN_HOURS_BETWEEN_SESSIONS = 0
     
     success = run_capture_session(args.account, dry_run=args.dry_run)
     sys.exit(0 if success else 1)

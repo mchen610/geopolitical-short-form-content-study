@@ -5,6 +5,9 @@
 undetected-chromedriver==3.5.5
 selenium==4.25.0
 
+# LLM for content analysis
+google-genai>=1.0.0
+
 # Data handling
 pandas==2.1.4
 

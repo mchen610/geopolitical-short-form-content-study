@@ -3,6 +3,31 @@ Configuration for YouTube Shorts feed capture.
 """
 from pathlib import Path
 
+# === LLM SETTINGS ===
+# Set your Google API key in environment variable GOOGLE_API_KEY
+GEMINI_MODEL = "gemini-2.0-flash"  # Fast and cheap
+
+# What content should we like?
+CONFLICT_PROMPT = """Analyze this YouTube Short and determine if it's related to the Israel-Palestine conflict.
+
+Video Title: {title}
+Channel: {channel}
+Description: {description}
+
+Consider as RELATED:
+- Direct conflict content (IDF, Hamas, Gaza, West Bank, etc.)
+- Israeli or Palestinian politics
+- Middle East conflict news/commentary
+- Pro-Israel or pro-Palestine content
+- Related protests or activism
+
+Consider as NOT RELATED:
+- General Middle East content not about the conflict
+- Unrelated news or entertainment
+- Travel/food content from the region (unless political)
+
+Respond with ONLY "YES" or "NO"."""
+
 # === ACCOUNT DEFINITIONS ===
 # Each account gets its own Chrome profile in ./chrome_profiles/
 # 
@@ -48,27 +73,12 @@ SHORTS_PER_SESSION = 50
 # Total session time limit (seconds) - fail-safe
 MAX_SESSION_DURATION = 600  # 10 minutes max
 
-# === RATE LIMITS ===
-# YouTube is more lenient, but still be reasonable
-MAX_SESSIONS_PER_DAY = 1000
-MIN_HOURS_BETWEEN_SESSIONS = 0
-
-# === CAPTURE SETTINGS ===
+# === BROWSER SETTINGS ===
 VIEWPORT_WIDTH = 1280
 VIEWPORT_HEIGHT = 900
 
-# Output directories
+# Output directory for session JSON files
 OUTPUT_DIR = Path("./data")
-SCREENSHOTS_DIR = OUTPUT_DIR / "screenshots"
-HTML_DIR = OUTPUT_DIR / "html"
-LOGS_DIR = OUTPUT_DIR / "logs"
 
-# === YOUTUBE URLs ===
-YOUTUBE_SHORTS_URL = "https://www.youtube.com/shorts/LRBvm_hQKqE"
-
-# === SAFETY FLAGS ===
-# Set to True to enable headless mode (not recommended)
-HEADLESS = False
-
-# Set to True to disable images (faster but changes layout)
-DISABLE_IMAGES = False
+# Starting URL (any Shorts URL works, it will scroll from there)
+YOUTUBE_SHORTS_URL = "https://www.youtube.com/shorts"
