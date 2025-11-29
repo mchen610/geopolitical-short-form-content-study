@@ -8,6 +8,7 @@ chrome_profiles/
 
 # Python
 __pycache__/
+.mypy_cache/
 *.py[cod]
 *$py.class
 .Python
