@@ -50,12 +50,13 @@ else:
 
 
 # Directory for this script's dedicated Chrome profiles
-SCRIPT_PROFILES_DIR = Path("./chrome_profiles")
+CHROME_PROFILES_DIR = Path("./chrome_profiles")
 
 
 def setup_directories():
     """Create output directory if it doesn't exist."""
     config.OUTPUT_DIR.mkdir(exist_ok=True)
+    CHROME_PROFILES_DIR.mkdir(exist_ok=True)
 
 
 
@@ -79,18 +80,9 @@ def kill_chrome_processes():
         pass  # Ignore errors on Windows or if pkill not found
 
 
-def get_profile_path(account_id: str) -> Path:
-    """Get the dedicated profile path for an account."""
-    SCRIPT_PROFILES_DIR.mkdir(exist_ok=True)
-    return SCRIPT_PROFILES_DIR / account_id
-
-
 def create_driver(account_id: str, setup_mode: bool = False):
     """
-    Create an undetected Chrome driver with the account's profile.
-    
-    Uses a dedicated profile directory for this script to avoid
-    conflicts with your regular Chrome browser.
+    Create an undetected Chrome driver with a dedicated profile for this account.
     """
     account = config.ACCOUNTS.get(account_id)
     if not account:
@@ -100,34 +92,26 @@ def create_driver(account_id: str, setup_mode: bool = False):
     kill_chrome_processes()
     
     # Use dedicated profile directory for this script
-    profile_path = get_profile_path(account_id)
+    profile_path = CHROME_PROFILES_DIR / account_id
     
     if not profile_path.exists() and not setup_mode:
         print(f"❌ Profile not set up for account: {account_id}")
-        print("   Run with --setup first to log in:")
-        print(f"   python capture_youtube_shorts.py --account {account_id} --setup")
+        print(f"   Run: python main.py --account {account_id} --setup")
         raise ValueError("Profile not set up. Run with --setup first.")
     
-    print(f"🔧 Using profile directory: {profile_path}")
     
     options = uc.ChromeOptions()
     
-    # Use our dedicated profile directory (not Chrome's main one)
+    # Use dedicated profile directory
     options.add_argument(f"--user-data-dir={profile_path.absolute()}")
     
-    # Window size for consistent screenshots
+    # Window size
     options.add_argument(f"--window-size={config.VIEWPORT_WIDTH},{config.VIEWPORT_HEIGHT}")
     
-    # Disable notifications (reduces popups)
+    # Disable notifications
     options.add_argument("--disable-notifications")
-    
-    # Disable automation flags that might be detected
     options.add_argument("--disable-blink-features=AutomationControlled")
-    
-    # Mute audio (Shorts auto-play with sound)
     options.add_argument("--mute-audio")
-    
-    # Disable first run experience
     options.add_argument("--no-first-run")
     options.add_argument("--no-default-browser-check")
     
@@ -137,10 +121,7 @@ def create_driver(account_id: str, setup_mode: bool = False):
         return driver
     except Exception as e:
         print(f"❌ Failed to create driver: {e}")
-        print("\n⚠️  Troubleshooting:")
-        print("   1. Make sure Chrome is completely closed")
-        print("   2. Check Activity Monitor for 'chrome' or 'Google Chrome' processes")
-        print("   3. Try: pkill -f chrome")
+        print("\n⚠️  Make sure Chrome is completely closed (pkill -f chrome)")
         raise
 
 
@@ -274,7 +255,9 @@ def is_conflict_related(metadata: dict) -> tuple[bool, str]:
             model=config.GEMINI_MODEL,
             contents=prompt,
         )
-        answer = response.text.strip().upper() if response.text else ""
+        if not response.text:
+            raise Exception("No response from Gemini API")
+        answer = response.text.strip().upper()
         is_related = answer == "YES"
         return is_related, answer
     except Exception as e:
@@ -282,10 +265,10 @@ def is_conflict_related(metadata: dict) -> tuple[bool, str]:
         return False, f"error: {e}"
 
 
-def click_like_button(driver) -> bool:
+def click_like_button(driver) -> tuple[bool, str]:
     """
     Click the like button on the current Short.
-    Returns True if successfully clicked, False otherwise.
+    Returns (success, status) where status is "liked", "already_liked", or "failed".
     """
     try:
         # Find the like button by aria-label containing "like this video"
@@ -297,17 +280,15 @@ def click_like_button(driver) -> bool:
         # Check if already liked (aria-pressed="true")
         is_already_liked = like_button.get_attribute("aria-pressed") == "true"
         if is_already_liked:
-            print("   💙 Already liked")
-            return False
+            return True, "already_liked"
         
         # Click the like button
         like_button.click()
-        print("   ❤️  Liked!")
-        return True
+        return True, "liked"
         
     except Exception as e:
         print(f"   ⚠️  Could not click like: {e}")
-        return False
+        return False, "failed"
 
 
 def swipe_to_next_short(driver) -> bool:
@@ -344,15 +325,8 @@ def view_shorts(driver, count: int) -> list[dict]:
         metadata = extract_current_short_metadata(driver)
         metadata["view_index"] = i + 1
         
-        video_id = metadata.get("video_id", "unknown")
-        channel = metadata.get("channel", "unknown")
-        title = metadata.get("title", "")[:50]
-        topic = metadata.get("topic", "")
-        print(f"   Short {i + 1}/{count} - {video_id}")
-        print(f"   👤 Channel: {channel}")
-        print(f"   📝 Title: {title or '(none)'}")
-        if topic:
-            print(f"   🏷️  Topic: {topic}")
+        title = metadata.get("title", "")[:50] or "(no title)"
+        print(f"   Short {i + 1}/{count} - {title}")
         
         # Analyze with LLM and like if conflict-related
         is_related, llm_response = is_conflict_related(metadata)
@@ -360,13 +334,13 @@ def view_shorts(driver, count: int) -> list[dict]:
         metadata["is_conflict_related"] = is_related
         
         if is_related:
-            print("   🎯 Conflict-related! Liking...")
             human_delay(0.5, 1.5)  # Small delay before clicking
-            liked = click_like_button(driver)
+            liked, like_status = click_like_button(driver)
             metadata["liked"] = liked
+            print("   Conflict-related: ✅ YES (liked)")
         else:
             metadata["liked"] = False
-            print("   ⬜ Not conflict-related")
+            print("   Conflict-related: ❌ NO (ignored)")
         
         shorts_data.append(metadata)
         
@@ -426,9 +400,6 @@ def run_capture_session(account_id: str, dry_run: bool = False):
         print(f"   Available accounts: {list(config.ACCOUNTS.keys())}")
         return False
     
-    account = config.ACCOUNTS[account_id]
-    print(f"   Cohort: {account['cohort']}")
-    print(f"   Profile: {get_profile_path(account_id)}")
     
     if dry_run:
         print("\n🧪 DRY RUN - Will open browser but not save data")
@@ -493,6 +464,7 @@ def run_capture_session(account_id: str, dry_run: bool = False):
     finally:
         if driver:
             print("\n🔒 Closing browser...")
+            print("View liked photos at: https://www.youtube.com/playlist?list=LL")
             try:
                 driver.quit()
             except Exception:
@@ -501,65 +473,37 @@ def run_capture_session(account_id: str, dry_run: bool = False):
     return success
 
 
-def run_setup_mode(account_id: str):
-    """
-    Run setup mode - opens browser for manual YouTube login.
-    The profile is saved for future capture sessions.
-    """
-    print("\n" + "=" * 60)
-    print(f"🔧 SETUP MODE - Account: {account_id}")
-    print("=" * 60)
-    
+def run_setup(account_id: str):
+    """Open browser for manual YouTube login. Profile is saved for future sessions."""
     if account_id not in config.ACCOUNTS:
         print(f"❌ Unknown account: {account_id}")
-        print(f"   Available accounts: {list(config.ACCOUNTS.keys())}")
         return False
     
-    profile_path = get_profile_path(account_id)
-    print(f"\n📁 Profile will be saved to: {profile_path}")
+    print(f"\n🔧 SETUP: Log into YouTube for account '{account_id}'")
+    print("   1. Browser will open")
+    print("   2. Log into YouTube/Google")
+    print("   3. Close browser when done")
     
-    print("\n📋 Instructions:")
-    print("   1. A browser window will open")
-    print("   2. Go to youtube.com and log in with your Google account")
-    print("   3. Make sure you're fully logged in (can see your avatar)")
-    print("   4. Close the browser window when done")
-    print("   5. The login will be saved for future sessions")
-    print("\n🚀 Opening browser in 3 seconds...")
-    time.sleep(3)
-    
+    setup_directories()
     driver = None
     try:
         driver = create_driver(account_id, setup_mode=True)
         driver.get("https://www.youtube.com")
         
-        print("\n✅ Browser opened!")
-        print("   → Log into YouTube now")
-        print("   → Close the browser window when done")
-        print("   (Or press Ctrl+C here to abort)")
+        print("\n✅ Browser open - log in now, then close the browser")
         
-        # Wait for user to close the browser
+        # Wait for browser to close
         while True:
             try:
-                # Check if browser is still open
                 _ = driver.current_url
                 time.sleep(1)
             except Exception:
-                # Browser was closed
                 break
         
-        print("\n✅ Setup complete!")
-        print(f"   Profile saved to: {profile_path}")
-        print("\n   Now run capture with:")
-        print(f"   python capture_youtube_shorts.py --account {account_id}")
+        print("✅ Setup complete!")
         return True
-        
     except KeyboardInterrupt:
-        print("\n\n⚠️  Setup aborted")
-        return False
-    except Exception as e:
-        print(f"\n❌ Setup failed: {e}")
-        import traceback
-        traceback.print_exc()
+        print("\n⚠️  Aborted")
         return False
     finally:
         if driver:
@@ -571,62 +515,32 @@ def run_setup_mode(account_id: str):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Capture YouTube Shorts feed - observation only",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  # First time: set up account (log in manually)
-  python capture_youtube_shorts.py --account neutral_1 --setup
-  
-  # Then: run capture sessions
-  python capture_youtube_shorts.py --account neutral_1
-  python capture_youtube_shorts.py --account neutral_1 --dry-run
-  
-  # List accounts
-  python capture_youtube_shorts.py --list-accounts
-        """
+        description="Capture YouTube Shorts feed and like conflict-related content",
+        epilog="First run: python main.py --account neutral_1 --setup"
     )
     
-    parser.add_argument(
-        "--account", "-a",
-        help="Account ID from config.py to use"
-    )
-    parser.add_argument(
-        "--setup", "-s",
-        action="store_true",
-        help="Setup mode: open browser for manual YouTube login"
-    )
-    parser.add_argument(
-        "--dry-run", "-n",
-        action="store_true",
-        help="Open browser but don't save data (for testing setup)"
-    )
-    parser.add_argument(
-        "--list-accounts", "-l",
-        action="store_true",
-        help="List configured accounts and exit"
-    )
+    parser.add_argument("--account", "-a", help="Account ID from config.py")
+    parser.add_argument("--setup", "-s", action="store_true", help="Setup: log into YouTube")
+    parser.add_argument("--dry-run", "-n", action="store_true", help="Don't save data")
+    parser.add_argument("--list-accounts", "-l", action="store_true", help="List accounts")
     
     args = parser.parse_args()
     
     if args.list_accounts:
-        print("\nConfigured accounts:")
+        print("\nAccounts:")
         for acc_id, acc_info in config.ACCOUNTS.items():
-            profile_path = get_profile_path(acc_id)
-            setup_status = "✅ ready" if profile_path.exists() else "❌ needs --setup"
-            print(f"  {acc_id}: {setup_status}")
-            print(f"    Cohort: {acc_info['cohort']}")
-            print(f"    Description: {acc_info.get('description', 'N/A')}")
+            profile_path = CHROME_PROFILES_DIR / acc_id
+            status = "✅" if profile_path.exists() else "❌ needs --setup"
+            print(f"  {acc_id}: {status}")
         return
     
     if not args.account:
         parser.print_help()
-        print("\n❌ Error: --account is required")
+        print("\n❌ --account required")
         sys.exit(1)
     
-    # Setup mode
     if args.setup:
-        success = run_setup_mode(args.account)
+        success = run_setup(args.account)
         sys.exit(0 if success else 1)
     
     success = run_capture_session(args.account, dry_run=args.dry_run)

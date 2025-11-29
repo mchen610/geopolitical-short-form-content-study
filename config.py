@@ -29,28 +29,13 @@ Consider as NOT RELATED:
 Respond with ONLY "YES" or "NO"."""
 
 # === ACCOUNT DEFINITIONS ===
-# Each account gets its own Chrome profile in ./chrome_profiles/
-# 
-# Setup steps:
-# 1. Run: python capture_youtube_shorts.py --account <name> --setup
-# 2. Log into YouTube in the browser that opens
-# 3. Close the browser
-# 4. Now you can run captures: python capture_youtube_shorts.py --account <name>
+# Each account gets a dedicated profile in ./chrome_profiles/
+# Run --setup to log in for the first time
 
 ACCOUNTS = {
     "neutral_1": {
-        "cohort": "cold_start_neutral",
         "description": "No interests set, no engagement"
     },
-    # Add more accounts:
-    # "neutral_2": {
-    #     "cohort": "cold_start_neutral",
-    #     "description": "Second neutral account"
-    # },
-    # "engaged_1": {
-    #     "cohort": "light_engagement",
-    #     "description": "Will like some conflict-related content"
-    # },
 }
 
 # === TIMING CONTROLS ===
@@ -80,5 +65,5 @@ VIEWPORT_HEIGHT = 900
 # Output directory for session JSON files
 OUTPUT_DIR = Path("./data")
 
-# Starting URL (any Shorts URL works, it will scroll from there)
-YOUTUBE_SHORTS_URL = "https://www.youtube.com/shorts"
+# This is an israel v palestine conflict related short. We wanna start here
+YOUTUBE_SHORTS_URL = "https://www.youtube.com/shorts/LRBvm_hQKqE"
