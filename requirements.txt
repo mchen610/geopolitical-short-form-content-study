@@ -1,0 +1,13 @@
+# YouTube Shorts Feed Capture - Dependencies
+# Install with: pip install -r requirements.txt
+
+# Browser automation with anti-detection
+undetected-chromedriver==3.5.5
+selenium==4.25.0
+
+# Data handling
+pandas==2.1.4
+
+# Utilities
+python-dotenv==1.0.0
+
