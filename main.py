@@ -244,10 +244,11 @@ def is_conflict_related(metadata: dict) -> tuple[bool, str]:
     # Use topic as description for Shorts (they don't have traditional descriptions)
     description = f"Topic/Hashtag: {topic}" if topic else "(no description)"
     
-    prompt = config.CONFLICT_PROMPT.format(
-        title=title or "(no title)",
-        channel=channel or "(unknown)",
-        description=description
+    prompt = config.generate_prompt(
+        topic=config.TOPIC,
+        title=title,
+        channel=channel,
+        description=description,
     )
     
     try:

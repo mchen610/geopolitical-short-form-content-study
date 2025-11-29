@@ -8,23 +8,41 @@ from pathlib import Path
 GEMINI_MODEL = "gemini-2.0-flash"  # Fast and cheap
 
 # What content should we like?
-CONFLICT_PROMPT = """Analyze this YouTube Short and determine if it's related to the Israel-Palestine conflict.
+TOPIC = "Israel-Palestine conflict"
+
+# Topic: [...keywords]
+CONFLICT_MAP = {
+    "Israel-Palestine conflict": [
+        "Israel",
+        "Palestine",
+        "West Bank",
+        "Gaza",
+        "Hamas",
+        "IDF",
+    ],
+}
+
+
+def generate_prompt(*, topic: str, title: str, channel: str, description: str) -> str:
+    """Generate an LLM prompt to determine if video content is related to a topic."""
+    keywords = CONFLICT_MAP.get(topic)
+    if not keywords:
+        raise ValueError(f"No keywords defined for topic: {topic}")
+    
+    keywords_list = "\n".join(f"- {kw}" for kw in keywords)
+    
+    return f"""Analyze these video details and determine if it's related to the topic.
+
+<topic>
+{topic}
+</topic>
+
+Consider as RELATED if mentions any of the following:
+{keywords_list}
 
 Video Title: {title}
 Channel: {channel}
 Description: {description}
-
-Consider as RELATED:
-- Direct conflict content (IDF, Hamas, Gaza, West Bank, etc.)
-- Israeli or Palestinian politics
-- Middle East conflict news/commentary
-- Pro-Israel or pro-Palestine content
-- Related protests or activism
-
-Consider as NOT RELATED:
-- General Middle East content not about the conflict
-- Unrelated news or entertainment
-- Travel/food content from the region (unless political)
 
 Respond with ONLY "YES" or "NO"."""
 
@@ -39,7 +57,6 @@ ACCOUNTS = {
 }
 
 # === TIMING CONTROLS ===
-# YouTube is less aggressive than Instagram, but still be careful
 # All times in seconds
 
 # Initial page load wait
