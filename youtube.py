@@ -50,7 +50,7 @@ def get_channel(driver: WebDriver) -> str:
     return driver.find_element(By.CSS_SELECTOR, CHANNEL_SELECTOR).text.strip()
 
 
-def extract_current_short_metadata(
+def extract_this_youtube_short_info(
     driver: WebDriver, view_index: int
 ) -> ShortMetadata:
     """Extract metadata from the currently visible Short."""

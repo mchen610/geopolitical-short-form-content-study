@@ -14,7 +14,7 @@ import config
 from utils import random_delay
 from youtube import (
     ShortMetadata,
-    extract_current_short_metadata,
+    extract_this_youtube_short_info,
     swipe_to_next_short,
     wait_for_shorts_load,
 )
@@ -102,7 +102,7 @@ def view_shorts(driver, count: int) -> list[ShortMetadata]:
         
         
         # Extract full metadata
-        metadata = extract_current_short_metadata(driver, i + 1)
+        metadata = extract_this_youtube_short_info(driver, i + 1)
         print(f"   Short {i + 1}/{count} - {metadata['title'][:50]}")
         
         shorts_data.append(metadata)
