@@ -5,6 +5,7 @@ import subprocess
 import sys
 import time
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 from seleniumwire import undetected_chromedriver as uc  # type: ignore[import-untyped]
@@ -101,9 +102,10 @@ def create_driver(account_id: str, setup_mode: bool = False):
         print("\n⚠️  Make sure Chrome is completely closed (pkill -f chrome)")
         raise
 
-def view_shorts(driver: uc.Chrome, count: int) -> list[ShortMetadata]:
+def view_shorts(driver: uc.Chrome, count: int, account_id: str, session_id: str) -> list[ShortMetadata]:
     """
     View multiple Shorts, capturing metadata for each.
+    Saves after every short processed.
     Returns list of Short metadata.
     """
     shorts_data = []
@@ -123,6 +125,9 @@ def view_shorts(driver: uc.Chrome, count: int) -> list[ShortMetadata]:
         # Extract full metadata
         metadata = extract_short_metadata(driver, i + 1)
         shorts_data.append(metadata)
+        
+        # Save after every short
+        save_session(account_id, session_id, shorts_data)
         
         # Clear network requests to avoid matching old timedtext data
         clear_requests(driver)
@@ -150,7 +155,6 @@ def save_session(account_id: str, session_id: str, shorts_data: list[ShortMetada
     session_file = config.OUTPUT_DIR / f"session_{account_id}_{session_id}.json"
     with open(session_file, "w") as f:
         json.dump(shorts_data, f, indent=2)
-    print(f"📝 Session saved: {session_file}")
 
 
 def run_capture_session(account_id: str):
@@ -167,8 +171,9 @@ def run_capture_session(account_id: str):
         print(f"   Available accounts: {list(config.ACCOUNTS.keys())}")
         return False
     
-    # Generate session ID
-    session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # Generate session ID in Eastern time with AM/PM
+    eastern = ZoneInfo('America/New_York')
+    session_id = datetime.now(eastern).strftime("%Y-%m-%d_%I:%M:%S%p")
     
     success = False
     driver = create_driver(account_id)
@@ -185,12 +190,9 @@ def run_capture_session(account_id: str):
         wait_for_shorts_load(driver)
         print("✅ Shorts loaded!")
         
-        # View Shorts
+        # View Shorts (saves after each one)
         print(f"\n🎬 Viewing Shorts ({config.SHORTS_PER_SESSION} videos)...")
-        shorts_data = view_shorts(driver, config.SHORTS_PER_SESSION)
-        
-        # Save session
-        save_session(account_id, session_id, shorts_data)
+        shorts_data = view_shorts(driver, config.SHORTS_PER_SESSION, account_id, session_id)
         
         print("\n" + "=" * 60)
         print("✅ Session complete!")

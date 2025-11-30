@@ -4,6 +4,7 @@ YouTube Shorts extraction - DOM interactions and network capture.
 
 import json
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from typing import TypedDict
 
 from selenium.webdriver.common.by import By
@@ -104,7 +105,7 @@ def extract_short_metadata(driver: Chrome, view_index: int) -> ShortMetadata:
     
     return {
         "url": url,
-        "extracted_at": datetime.now().isoformat(),
+        "extracted_at": datetime.now(ZoneInfo('America/New_York')).isoformat(),
         "title": title,
         "channel": channel,
         "video_id": video_id,
