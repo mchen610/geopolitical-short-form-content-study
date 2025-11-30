@@ -153,8 +153,8 @@ def save_session(account_id: str, session_id: str, shorts_data: list[ShortMetada
     # Clean up the shorts data to just what we need
     
     session_file = config.OUTPUT_DIR / f"session_{account_id}_{session_id}.json"
-    with open(session_file, "w") as f:
-        json.dump(shorts_data, f, indent=2)
+    with open(session_file, "w", encoding="utf-8") as f:
+        json.dump(shorts_data, f, indent=2, ensure_ascii=False)
 
 
 def run_capture_session(account_id: str):
