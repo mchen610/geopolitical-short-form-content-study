@@ -9,6 +9,7 @@ from typing import TypedDict
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from seleniumwire.undetected_chromedriver import Chrome  # type: ignore[import-untyped]
@@ -73,11 +74,16 @@ def clear_requests(driver: Chrome):
 
 
 def click_like(driver: Chrome):
-    """Click the like button if not already liked. Returns True if liked."""
-    btn = driver.find_element(By.CSS_SELECTOR, LIKE_BUTTON)
-    if btn.get_attribute("aria-pressed") == "true":
-        return
-    btn.click()
+    """Click the like button if not already liked."""
+    try:
+        btn = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, LIKE_BUTTON))
+        )
+        if btn.get_attribute("aria-pressed") == "true":
+            return
+        ActionChains(driver).move_to_element(btn).click(btn).perform()
+    except Exception:
+        print("   Like button not found or not clickable")
 
 
 def extract_short_metadata(driver: Chrome, view_index: int) -> ShortMetadata:
