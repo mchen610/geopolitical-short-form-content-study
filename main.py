@@ -1,7 +1,6 @@
 import argparse
 import json
 import random
-import subprocess
 import sys
 import time
 from datetime import datetime
@@ -9,7 +8,6 @@ from zoneinfo import ZoneInfo
 from pathlib import Path
 
 from seleniumwire import undetected_chromedriver as uc  # type: ignore[import-untyped]
-from selenium.common.exceptions import WebDriverException
 
 import config
 from utils import random_delay
