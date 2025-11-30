@@ -65,17 +65,17 @@ PAGE_LOAD_WAIT_MAX = 5
 # Delay between scrolls (simulating watching a Short)
 # Shorts are typically 15-60 seconds, so we simulate partial watching
 SCROLL_DELAY_MIN = 4.0
-SCROLL_DELAY_MAX = 12.0
+SCROLL_DELAY_MAX = 6.0
 
 # Number of Shorts to view per session
 # Each scroll = 1 Short viewed
 SHORTS_PER_SESSION = 50
 
 # Total session time limit (seconds) - fail-safe
-MAX_SESSION_DURATION = 600  # 10 minutes max
+MAX_SESSION_DURATION = 6000
 
 # === BROWSER SETTINGS ===
-VIEWPORT_WIDTH = 1280
+VIEWPORT_WIDTH = 800
 VIEWPORT_HEIGHT = 900
 
 # Output directory for session JSON files

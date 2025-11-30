@@ -1,24 +1,25 @@
 """
-YouTube Shorts selector actions and DOM interactions.
+YouTube Shorts extraction - DOM interactions and network capture.
 """
 
+import json
 from datetime import datetime
 from typing import TypedDict
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from seleniumwire.undetected_chromedriver import Chrome  # type: ignore[import-untyped]
 
+import config
 from llm import is_conflict_related
 from utils import random_delay
 
-# CSS Selectors
-TITLE_SELECTOR = "h2.ytShortsVideoTitleViewModelShortsVideoTitle span"
-CHANNEL_SELECTOR = ".ytReelChannelBarViewModelChannelName a"
-SHORTS_PLAYER_SELECTOR = "ytd-shorts, ytd-reel-video-renderer, #shorts-player"
-LIKE_BUTTON_SELECTOR = 'button[aria-label*="like this video"]'
+SHORTS_PLAYER = "ytd-shorts, ytd-reel-video-renderer"
+TITLE = "h2.ytShortsVideoTitleViewModelShortsVideoTitle"
+CHANNEL = ".ytReelChannelBarViewModelChannelName a"
+LIKE_BUTTON = 'button[aria-label*="like this video"]'
 
 
 class ShortMetadata(TypedDict):
@@ -29,63 +30,94 @@ class ShortMetadata(TypedDict):
     video_id: str
     view_index: int
     is_conflict_related: bool
+    transcript: str
 
 
-def wait_for_shorts_load(driver: WebDriver, timeout: int = 30):
-    """
-    Wait for YouTube Shorts to load.
-    """
+def wait_for_shorts_load(driver: Chrome, timeout: int = 30):
     WebDriverWait(driver, timeout).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, SHORTS_PLAYER_SELECTOR))
+        EC.presence_of_element_located((By.CSS_SELECTOR, SHORTS_PLAYER))
     )
     random_delay(2, 3)
 
-def get_title(driver: WebDriver) -> str:
-    """Extract video title from the current Short."""
-    return driver.find_element(By.CSS_SELECTOR, TITLE_SELECTOR).text.strip()
+
+def get_text(driver: Chrome, selector: str) -> str:
+    """Get text from element, empty string if not found."""
+    elements = driver.find_elements(By.CSS_SELECTOR, selector)
+    return elements[0].text.strip() if elements else ""
 
 
-def get_channel(driver: WebDriver) -> str:
-    """Extract channel name from the current Short."""
-    return driver.find_element(By.CSS_SELECTOR, CHANNEL_SELECTOR).text.strip()
+def extract_transcript(data: dict) -> str:
+    """Extract joined transcript from timedtext JSON."""
+    texts = []
+    for event in data["events"]:
+        if "segs" not in event:
+            continue
+        text = "".join(seg["utf8"] for seg in event["segs"]).strip()
+        texts.append(text)
+    return " ".join(texts)
 
 
-def extract_this_youtube_short_info(
-    driver: WebDriver, view_index: int
-) -> ShortMetadata:
+def get_transcript(driver: Chrome, video_id: str) -> str:
+    for req in driver.requests:
+        if "timedtext" in req.url and video_id in req.url and req.response:
+            body = req.response.body.decode("utf-8")
+            return extract_transcript(json.loads(body))
+    # This means the video simply doesn't have a transcript       
+    return ""
+    
+
+
+def clear_requests(driver: Chrome):
+    del driver.requests
+
+
+def click_like(driver: Chrome):
+    """Click the like button if not already liked. Returns True if liked."""
+    btn = driver.find_element(By.CSS_SELECTOR, LIKE_BUTTON)
+    if btn.get_attribute("aria-pressed") == "true":
+        return
+    btn.click()
+
+
+def extract_short_metadata(driver: Chrome, view_index: int) -> ShortMetadata:
     """Extract metadata from the currently visible Short."""
     url = driver.current_url
-    video_id = url.split("/shorts/")[-1].split("?")[0]
-    title = get_title(driver) 
-    channel = get_channel(driver)
+
+    video_id = url.split("/shorts/")[-1]
+    print(f"   Short {view_index} - {url}")
+    
+    title = get_text(driver, TITLE)
+    print(f"   Title: {title}")
+
+    channel = get_text(driver, CHANNEL)
+
+    transcript = get_transcript(driver, video_id)
+    truncated_transcript = transcript[:70] + "..." + (f"({len(transcript.split(' '))} words)") if transcript else None
+    print(f"   Transcript: {truncated_transcript}")
+
+    is_related = is_conflict_related(topic=config.TOPIC, title=title, channel=channel, transcript=transcript)
+    if is_related:
+        click_like(driver)
+        print("   ❤️ Liked!")
+    else:
+        print("   ❌ Ignored")
+    
     return {
         "url": url,
         "extracted_at": datetime.now().isoformat(),
-        "title": get_title(driver),
-        "channel": get_channel(driver),
+        "title": title,
+        "channel": channel,
         "video_id": video_id,
         "view_index": view_index,
-        "is_conflict_related": is_conflict_related(title=title, channel=channel),
+        "is_conflict_related": is_related,
+        "transcript": transcript,
     }
 
 
-def click_like_button(driver: WebDriver) -> None:
-    """Click the like button on the current Short if not already liked."""
-    like_button = driver.find_element(By.CSS_SELECTOR, LIKE_BUTTON_SELECTOR)
-    
-    if like_button.get_attribute("aria-pressed") == "true":
-        return
-    
-    like_button.click()
-
-
-def swipe_to_next_short(driver: WebDriver) -> bool:
-    """Swipe/scroll to the next Short. Returns True if successful."""
+def swipe_to_next_short(driver: Chrome) -> bool:
     try:
-        body = driver.find_element(By.TAG_NAME, "body")
-        body.send_keys(Keys.ARROW_DOWN)
+        driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ARROW_DOWN)
         return True
     except Exception as e:
         print(f"   Swipe failed: {e}")
         return False
-

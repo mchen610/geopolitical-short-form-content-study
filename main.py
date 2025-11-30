@@ -7,14 +7,15 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-import undetected_chromedriver as uc  # type: ignore[import-untyped]
+from seleniumwire import undetected_chromedriver as uc  # type: ignore[import-untyped]
 from selenium.common.exceptions import WebDriverException
 
 import config
 from utils import random_delay
 from youtube import (
     ShortMetadata,
-    extract_this_youtube_short_info,
+    clear_requests,
+    extract_short_metadata,
     swipe_to_next_short,
     wait_for_shorts_load,
 )
@@ -76,8 +77,23 @@ def create_driver(account_id: str, setup_mode: bool = False):
     options.add_argument("--no-first-run")
     options.add_argument("--no-default-browser-check")
     
+    # Required for Selenium Wire proxy (intercepts HTTPS traffic)
+    options.add_argument("--ignore-certificate-errors")
+    
+    # Selenium Wire options - only capture timedtext requests to reduce proxy load
+    seleniumwire_options = {
+        'disable_encoding': True,
+        'include_urls': [
+            '.*timedtext.*',
+        ],
+    }
+    
     try:
-        driver = uc.Chrome(options=options, version_main=None)
+        driver = uc.Chrome(
+            options=options,
+            seleniumwire_options=seleniumwire_options,
+            version_main=None
+        )
         driver.set_window_size(config.VIEWPORT_WIDTH, config.VIEWPORT_HEIGHT)
         return driver
     except Exception as e:
@@ -85,7 +101,7 @@ def create_driver(account_id: str, setup_mode: bool = False):
         print("\n⚠️  Make sure Chrome is completely closed (pkill -f chrome)")
         raise
 
-def view_shorts(driver, count: int) -> list[ShortMetadata]:
+def view_shorts(driver: uc.Chrome, count: int) -> list[ShortMetadata]:
     """
     View multiple Shorts, capturing metadata for each.
     Returns list of Short metadata.
@@ -100,12 +116,16 @@ def view_shorts(driver, count: int) -> list[ShortMetadata]:
             print(f"⚠️  Session time limit reached ({config.MAX_SESSION_DURATION}s)")
             break
         
+        if not driver.current_url:
+            print("Browser closed, exiting...")
+            break
         
         # Extract full metadata
-        metadata = extract_this_youtube_short_info(driver, i + 1)
-        print(f"   Short {i + 1}/{count} - {metadata['title'][:50]}")
-        
+        metadata = extract_short_metadata(driver, i + 1)
         shorts_data.append(metadata)
+        
+        # Clear network requests to avoid matching old timedtext data
+        clear_requests(driver)
         
         # Human-like viewing delay (watching the Short)
         random_delay(config.SCROLL_DELAY_MIN, config.SCROLL_DELAY_MAX)
@@ -117,12 +137,7 @@ def view_shorts(driver, count: int) -> list[ShortMetadata]:
         
         # Swipe to next Short (except for last one)
         if i < count - 1:
-            if not swipe_to_next_short(driver):
-                print("   Failed to swipe, retrying...")
-                random_delay(1, 2)
-                swipe_to_next_short(driver)
-            
-            # Small delay after swipe for video to load
+            swipe_to_next_short(driver)
             random_delay(0.5, 1.5)
     
     return shorts_data
@@ -155,13 +170,11 @@ def run_capture_session(account_id: str):
     # Generate session ID
     session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     
-    driver = None
     success = False
-    
+    driver = create_driver(account_id)
     try:
         # Setup
         setup_directories()
-        driver = create_driver(account_id)
         
         print("\n📱 Loading YouTube Shorts...")
         driver.get(config.YOUTUBE_SHORTS_URL)
@@ -186,29 +199,13 @@ def run_capture_session(account_id: str):
         
         success = True
         
-    except WebDriverException as e:
-        print(f"\n❌ Browser error: {e}")
-        print("\n⚠️  Tips:")
-        print("   - Make sure Chrome is completely closed")
-        print("   - Check that the profile directory exists")
-        print("   - Try running Chrome manually first to ensure profile works")
-        
     except KeyboardInterrupt:
         print("\n\n⚠️  Interrupted by user")
         
-    except Exception as e:
-        print(f"\n❌ Unexpected error: {e}")
-        import traceback
-        traceback.print_exc()
-        
     finally:
-        if driver:
-            print("\n🔒 Closing browser...")
-            try:
-                driver.quit()
-            except Exception:
-                pass
-    
+        print("\n🔒 Closing browser...")
+        driver.quit()
+
     return success
 
 
@@ -255,9 +252,8 @@ def main():
         return
     
     if not args.account:
-        parser.print_help()
-        print("\n❌ --account required")
-        sys.exit(1)
+        args.account = list(config.ACCOUNTS.keys())[0]
+        print(f"Using default account: {args.account}")
     
     if args.setup:
         success = run_setup(args.account)

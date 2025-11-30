@@ -4,6 +4,8 @@
 # Browser automation with anti-detection
 undetected-chromedriver==3.5.5
 selenium==4.25.0
+selenium-wire==5.1.0
+blinker==1.6.3  # pin for selenium-wire compatibility
 
 # LLM for content analysis
 google-genai>=1.0.0
