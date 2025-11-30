@@ -8,18 +8,74 @@ from pathlib import Path
 GEMINI_MODEL = "gemini-2.0-flash"  # Fast and cheap
 
 # What content should we like?
-TOPIC = "Israel-Palestine conflict"
+TOPIC = "Palestine"
 
 # Topic: [...keywords]
 CONFLICT_MAP = {
-    "Israel-Palestine conflict": [
-        "Israel",
-        "Palestine",
-        "West Bank",
-        "Gaza",
-        "Hamas",
-        "IDF",
+    "Palestine": [
+        "gaza strip bombardment",
+        "rafah invasion",
+        "khan younis fighting",
+        "idf gaza operation",
+        "al-shifa hospital raid",
+        "jabalia strikes",
+        "unrwa shelters hit",
+        "west bank settler attacks",
+        "jenin camp raid",
+        "palestinian displacement west bank"
     ],
+
+    "Myanmar": [
+        "tatmadaw offensive",
+        "people’s defense force ambush",
+        "arakan army advance",
+        "rakhine state fighting",
+        "sagaing resistance",
+        "chinland defense force",
+        "myanmar village airstrike",
+        "karen national union clashes",
+        "military junta naypyidaw",
+        "rohingya villages burned"
+    ],
+
+    "Ukraine": [
+        "kharkiv front",
+        "bakhmut trenches",
+        "avdiivka assault",
+        "donetsk shelling",
+        "zaporizhzhia line",
+        "crimea strikes",
+        "shahed drone barrage",
+        "himars strikes ukraine",
+        "russian mobilization ukraine",
+        "black sea fleet attacks"
+    ],
+
+    "Mexico": [
+        "cjng vs sinaloa clashes",
+        "michoacan convoy ambush",
+        "cartel roadblocks",
+        "narco drone attack",
+        "tamaulipas shootout",
+        "gulf cartel execution",
+        "plaza takeover cartel",
+        "levantan a",
+        "military vs cartel firefight",
+        "culiacanazo operation"
+    ],
+
+    "Brazil": [
+        "pcc prison uprising",
+        "rio favela police raid",
+        "complexo do alemao operation",
+        "milicia territory dispute",
+        "amazon illegal mining gangs",
+        "yanomami land invasion",
+        "para rural land conflict",
+        "comando vermelho shootout",
+        "pcc retaliation sao paulo",
+        "amazon defenders attacked"
+    ]
 }
 
 
