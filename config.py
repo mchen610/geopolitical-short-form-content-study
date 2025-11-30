@@ -23,13 +23,14 @@ CONFLICT_MAP = {
 }
 
 
-def generate_prompt(*, topic: str, title: str, channel: str) -> str:
+def generate_prompt(*, topic: str, **kwargs: str) -> str:
     """Generate an LLM prompt to determine if video content is related to a topic."""
     keywords = CONFLICT_MAP.get(topic)
     if not keywords:
         raise ValueError(f"No keywords defined for topic: {topic}")
     
     keywords_list = "\n".join(f"- {kw}" for kw in keywords)
+    details = "\n".join(f"{key.capitalize()}: {value}" for key, value in kwargs.items())
     
     return f"""Analyze these video details and determine if it's related to the topic.
 
@@ -40,8 +41,7 @@ def generate_prompt(*, topic: str, title: str, channel: str) -> str:
 Consider as RELATED if mentions any of the following:
 {keywords_list}
 
-Video Title: {title}
-Channel: {channel}
+{details}
 
 Respond with ONLY "YES" or "NO"."""
 

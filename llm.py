@@ -14,7 +14,7 @@ def is_conflict_related(*, title: str, channel: str) -> bool:
     """
     Use LLM to determine if the Short is related to Israel-Palestine conflict.
     """
-    prompt = config.generate_prompt(  # noqa: F821
+    prompt = config.generate_prompt(
         topic=config.TOPIC,
         title=title,
         channel=channel,
