@@ -40,14 +40,7 @@ import config
 # Load environment variables from .env file
 load_dotenv()
 
-# Initialize Gemini client
-_google_api_key = os.environ.get("GOOGLE_API_KEY", "")
-gemini_client: genai.Client | None = None
-if _google_api_key:
-    gemini_client = genai.Client(api_key=_google_api_key)
-else:
-    print("⚠️  Warning: GOOGLE_API_KEY not set. LLM analysis will be skipped.")
-
+gemini_client = genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
 
 # Directory for this script's dedicated Chrome profiles
 CHROME_PROFILES_DIR = Path("./chrome_profiles")
@@ -199,19 +192,19 @@ def extract_current_short_metadata(driver) -> dict:
         print(f"   ⚠️  Channel extraction error: {e}")
     
     try:
-        # Get suggested topic/hashtag if available
-        topic_selectors = [
+        # Get suggested topic/hashtag if available (used as description)
+        description_selectors = [
             ".ytShortsSuggestedActionViewModelStaticHostPrimaryText span",
             "yt-shorts-suggested-action-view-model span.yt-core-attributed-string",
         ]
-        for selector in topic_selectors:
+        for selector in description_selectors:
             elements = driver.find_elements(By.CSS_SELECTOR, selector)
             for el in elements:
                 text = el.text.strip()
                 if text:
-                    metadata["topic"] = text
+                    metadata["description"] = text
                     break
-            if "topic" in metadata:
+            if "description" in metadata:
                 break
     except Exception:
         pass
@@ -225,24 +218,18 @@ def extract_current_short_metadata(driver) -> dict:
     return metadata
 
 
-def is_conflict_related(metadata: dict) -> tuple[bool, str]:
+def is_conflict_related(metadata: dict) -> bool:
     """
     Use LLM to determine if the Short is related to Israel-Palestine conflict.
     Returns (is_related, reasoning).
     """
-    if not gemini_client:
-        return False, "no_api_key"
-    
-    title = metadata.get("title", "")
-    channel = metadata.get("channel", "")
-    topic = metadata.get("topic", "")
-    
-    # Skip if we have no content to analyze
-    if not title and not topic:
-        return False, "no_content"
-    
-    # Use topic as description for Shorts (they don't have traditional descriptions)
-    description = f"Topic/Hashtag: {topic}" if topic else "(no description)"
+    title = metadata.get("title")
+
+    if not title:
+        raise ValueError(f"No title found: {metadata}")
+
+    channel = metadata.get("channel", "No channel found")
+    description = metadata.get("description", "No description found")
     
     prompt = config.generate_prompt(
         topic=config.TOPIC,
@@ -250,20 +237,15 @@ def is_conflict_related(metadata: dict) -> tuple[bool, str]:
         channel=channel,
         description=description,
     )
-    
-    try:
-        response = gemini_client.models.generate_content(
-            model=config.GEMINI_MODEL,
-            contents=prompt,
-        )
-        if not response.text:
-            raise Exception("No response from Gemini API")
-        answer = response.text.strip().upper()
-        is_related = answer == "YES"
-        return is_related, answer
-    except Exception as e:
-        print(f"   ⚠️  LLM error: {e}")
-        return False, f"error: {e}"
+
+    response = gemini_client.models.generate_content(
+        model=config.GEMINI_MODEL,
+        contents=prompt,
+    )
+    if not response.text:
+        raise Exception("No response from Gemini API")
+
+    return response.text.strip().upper() == "YES"
 
 
 def click_like_button(driver) -> tuple[bool, str]:
@@ -330,18 +312,8 @@ def view_shorts(driver, count: int) -> list[dict]:
         print(f"   Short {i + 1}/{count} - {title}")
         
         # Analyze with LLM and like if conflict-related
-        is_related, llm_response = is_conflict_related(metadata)
-        metadata["llm_response"] = llm_response
+        is_related = is_conflict_related(metadata)
         metadata["is_conflict_related"] = is_related
-        
-        if is_related:
-            human_delay(0.5, 1.5)  # Small delay before clicking
-            liked, like_status = click_like_button(driver)
-            metadata["liked"] = liked
-            print("   Conflict-related: ✅ YES (liked)")
-        else:
-            metadata["liked"] = False
-            print("   Conflict-related: ❌ NO (ignored)")
         
         shorts_data.append(metadata)
         
@@ -376,7 +348,7 @@ def save_session(account_id: str, session_id: str, shorts_data: list[dict]):
             "url": short.get("url"),
             "title": short.get("title"),
             "channel": short.get("channel"),
-            "topic": short.get("topic"),
+            "description": short.get("description"),
             "is_conflict_related": short.get("is_conflict_related", False),
             "liked": short.get("liked", False),
         })
