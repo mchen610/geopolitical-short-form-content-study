@@ -29,13 +29,15 @@ from pathlib import Path
 from dotenv import load_dotenv
 from google import genai  # type: ignore[import-untyped]
 import undetected_chromedriver as uc  # type: ignore[import-untyped]
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, WebDriverException
+from selenium.common.exceptions import WebDriverException
 
 import config
+from utils import human_delay
+from youtube import (
+    extract_current_short_metadata,
+    swipe_to_next_short,
+    wait_for_shorts_load,
+)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -50,15 +52,6 @@ def setup_directories():
     """Create output directory if it doesn't exist."""
     config.OUTPUT_DIR.mkdir(exist_ok=True)
     CHROME_PROFILES_DIR.mkdir(exist_ok=True)
-
-
-
-
-def human_delay(min_sec: float, max_sec: float):
-    """Sleep for a random duration to simulate human behavior."""
-    delay = random.uniform(min_sec, max_sec)
-    time.sleep(delay)
-    return delay
 
 
 def kill_chrome_processes():
@@ -118,106 +111,6 @@ def create_driver(account_id: str, setup_mode: bool = False):
         raise
 
 
-def wait_for_shorts_load(driver, timeout: int = 30) -> bool:
-    """
-    Wait for YouTube Shorts to load.
-    Returns True if loaded, False if error.
-    """
-    try:
-        # Wait for Shorts player to appear
-        # YouTube Shorts uses a specific player element
-        WebDriverWait(driver, timeout).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "ytd-shorts, ytd-reel-video-renderer, #shorts-player"))
-        )
-        
-        # Additional wait for video to actually load
-        human_delay(2, 3)
-        
-        return True
-        
-    except TimeoutException:
-        print("❌ Timeout waiting for Shorts to load")
-        # Check if we're on a different page
-        if "youtube.com" not in driver.current_url:
-            print("   Not on YouTube - check if logged in")
-        return False
-
-
-def extract_current_short_metadata(driver) -> dict:
-    """
-    Extract metadata from the currently visible Short.
-    Uses YouTube Shorts-specific selectors.
-    """
-    metadata = {
-        "url": driver.current_url,
-        "extracted_at": datetime.now().isoformat(),
-    }
-    
-    try:
-        # Get video title - YouTube Shorts uses this specific class
-        title_selectors = [
-            "h2.ytShortsVideoTitleViewModelShortsVideoTitle",
-            "yt-shorts-video-title-view-model h2",
-            "h2.ytShortsVideoTitleViewModelShortsVideoTitle span",
-        ]
-        for selector in title_selectors:
-            elements = driver.find_elements(By.CSS_SELECTOR, selector)
-            for el in elements:
-                text = el.text.strip()
-                if text and len(text) > 1:
-                    metadata["title"] = text
-                    break
-            if "title" in metadata:
-                break
-    except Exception as e:
-        print(f"   ⚠️  Title extraction error: {e}")
-    
-    try:
-        # Get channel name - YouTube Shorts uses this specific class
-        channel_selectors = [
-            ".ytReelChannelBarViewModelChannelName a",
-            "yt-reel-channel-bar-view-model .ytReelChannelBarViewModelChannelName a",
-            ".ytReelChannelBarViewModelChannelName",
-        ]
-        for selector in channel_selectors:
-            elements = driver.find_elements(By.CSS_SELECTOR, selector)
-            for el in elements:
-                text = el.text.strip()
-                if text:
-                    metadata["channel"] = text
-                    break
-            if "channel" in metadata:
-                break
-    except Exception as e:
-        print(f"   ⚠️  Channel extraction error: {e}")
-    
-    try:
-        # Get suggested topic/hashtag if available (used as description)
-        description_selectors = [
-            ".ytShortsSuggestedActionViewModelStaticHostPrimaryText span",
-            "yt-shorts-suggested-action-view-model span.yt-core-attributed-string",
-        ]
-        for selector in description_selectors:
-            elements = driver.find_elements(By.CSS_SELECTOR, selector)
-            for el in elements:
-                text = el.text.strip()
-                if text:
-                    metadata["description"] = text
-                    break
-            if "description" in metadata:
-                break
-    except Exception:
-        pass
-    
-    # Extract video ID from URL
-    url = driver.current_url
-    if "/shorts/" in url:
-        video_id = url.split("/shorts/")[-1].split("?")[0].split("/")[0]
-        metadata["video_id"] = video_id
-    
-    return metadata
-
-
 def is_conflict_related(metadata: dict) -> bool:
     """
     Use LLM to determine if the Short is related to Israel-Palestine conflict.
@@ -229,13 +122,11 @@ def is_conflict_related(metadata: dict) -> bool:
         raise ValueError(f"No title found: {metadata}")
 
     channel = metadata.get("channel", "No channel found")
-    description = metadata.get("description", "No description found")
     
     prompt = config.generate_prompt(
         topic=config.TOPIC,
         title=title,
         channel=channel,
-        description=description,
     )
 
     response = gemini_client.models.generate_content(
@@ -246,47 +137,6 @@ def is_conflict_related(metadata: dict) -> bool:
         raise Exception("No response from Gemini API")
 
     return response.text.strip().upper() == "YES"
-
-
-def click_like_button(driver) -> tuple[bool, str]:
-    """
-    Click the like button on the current Short.
-    Returns (success, status) where status is "liked", "already_liked", or "failed".
-    """
-    try:
-        # Find the like button by aria-label containing "like this video"
-        like_button = driver.find_element(
-            By.CSS_SELECTOR,
-            'button[aria-label*="like this video"]'
-        )
-        
-        # Check if already liked (aria-pressed="true")
-        is_already_liked = like_button.get_attribute("aria-pressed") == "true"
-        if is_already_liked:
-            return True, "already_liked"
-        
-        # Click the like button
-        like_button.click()
-        return True, "liked"
-        
-    except Exception as e:
-        print(f"   ⚠️  Could not click like: {e}")
-        return False, "failed"
-
-
-def swipe_to_next_short(driver) -> bool:
-    """
-    Swipe/scroll to the next Short.
-    Returns True if successful.
-    """
-    try:
-        # Method 1: Press Down arrow or J key (YouTube shortcut)
-        body = driver.find_element(By.TAG_NAME, "body")
-        body.send_keys(Keys.ARROW_DOWN)
-        return True
-    except Exception as e:
-        print(f"   Swipe failed: {e}")
-        return False
 
 
 def view_shorts(driver, count: int) -> list[dict]:
@@ -348,7 +198,6 @@ def save_session(account_id: str, session_id: str, shorts_data: list[dict]):
             "url": short.get("url"),
             "title": short.get("title"),
             "channel": short.get("channel"),
-            "description": short.get("description"),
             "is_conflict_related": short.get("is_conflict_related", False),
             "liked": short.get("liked", False),
         })

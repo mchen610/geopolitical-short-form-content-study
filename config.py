@@ -23,7 +23,7 @@ CONFLICT_MAP = {
 }
 
 
-def generate_prompt(*, topic: str, title: str, channel: str, description: str) -> str:
+def generate_prompt(*, topic: str, title: str, channel: str) -> str:
     """Generate an LLM prompt to determine if video content is related to a topic."""
     keywords = CONFLICT_MAP.get(topic)
     if not keywords:
@@ -42,7 +42,6 @@ Consider as RELATED if mentions any of the following:
 
 Video Title: {title}
 Channel: {channel}
-Description: {description}
 
 Respond with ONLY "YES" or "NO"."""
 
