@@ -1,21 +1,3 @@
-"""
-YouTube Shorts Feed Capture - Observation Only
-
-SAFETY MEASURES:
-- Uses undetected-chromedriver to avoid bot detection
-- Uses your real, manually-logged-in Chrome profile
-- Human-like random delays between swipes
-- Conservative view limits
-- No engagement automation whatsoever
-
-BEFORE RUNNING:
-1. pip install -r requirements.txt
-2. Create a new Chrome profile and manually log into YouTube/Google
-3. Update config.py with your profile directory
-4. Close Chrome completely (important!)
-5. Run: python capture_youtube_shorts.py --account neutral_1
-"""
-
 import argparse
 import json
 import random
@@ -156,7 +138,7 @@ def save_session(account_id: str, session_id: str, shorts_data: list[ShortMetada
     print(f"📝 Session saved: {session_file}")
 
 
-def run_capture_session(account_id: str, dry_run: bool = False):
+def run_capture_session(account_id: str):
     """
     Run a single Shorts capture session for the given account.
     """
@@ -169,10 +151,6 @@ def run_capture_session(account_id: str, dry_run: bool = False):
         print(f"❌ Unknown account: {account_id}")
         print(f"   Available accounts: {list(config.ACCOUNTS.keys())}")
         return False
-    
-    
-    if dry_run:
-        print("\n🧪 DRY RUN - Will open browser but not save data")
     
     # Generate session ID
     session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -199,8 +177,7 @@ def run_capture_session(account_id: str, dry_run: bool = False):
         shorts_data = view_shorts(driver, config.SHORTS_PER_SESSION)
         
         # Save session
-        if not dry_run:
-            save_session(account_id, session_id, shorts_data)
+        save_session(account_id, session_id, shorts_data)
         
         print("\n" + "=" * 60)
         print("✅ Session complete!")
@@ -265,7 +242,6 @@ def main():
     
     parser.add_argument("--account", "-a", help="Account ID from config.py")
     parser.add_argument("--setup", "-s", action="store_true", help="Setup: log into YouTube")
-    parser.add_argument("--dry-run", "-n", action="store_true", help="Don't save data")
     parser.add_argument("--list-accounts", "-l", action="store_true", help="List accounts")
     
     args = parser.parse_args()
@@ -287,7 +263,7 @@ def main():
         success = run_setup(args.account)
         sys.exit(0 if success else 1)
     
-    success = run_capture_session(args.account, dry_run=args.dry_run)
+    success = run_capture_session(args.account)
     sys.exit(0 if success else 1)
 
 
