@@ -18,7 +18,6 @@ BEFORE RUNNING:
 
 import argparse
 import json
-import os
 import random
 import subprocess
 import sys
@@ -26,23 +25,17 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from dotenv import load_dotenv
-from google import genai  # type: ignore[import-untyped]
 import undetected_chromedriver as uc  # type: ignore[import-untyped]
 from selenium.common.exceptions import WebDriverException
 
 import config
-from utils import human_delay
+from utils import random_delay
 from youtube import (
+    ShortMetadata,
     extract_current_short_metadata,
     swipe_to_next_short,
     wait_for_shorts_load,
 )
-
-# Load environment variables from .env file
-load_dotenv()
-
-gemini_client = genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
 
 # Directory for this script's dedicated Chrome profiles
 CHROME_PROFILES_DIR = Path("./chrome_profiles")
@@ -110,36 +103,7 @@ def create_driver(account_id: str, setup_mode: bool = False):
         print("\n⚠️  Make sure Chrome is completely closed (pkill -f chrome)")
         raise
 
-
-def is_conflict_related(metadata: dict) -> bool:
-    """
-    Use LLM to determine if the Short is related to Israel-Palestine conflict.
-    Returns (is_related, reasoning).
-    """
-    title = metadata.get("title")
-
-    if not title:
-        raise ValueError(f"No title found: {metadata}")
-
-    channel = metadata.get("channel", "No channel found")
-    
-    prompt = config.generate_prompt(
-        topic=config.TOPIC,
-        title=title,
-        channel=channel,
-    )
-
-    response = gemini_client.models.generate_content(
-        model=config.GEMINI_MODEL,
-        contents=prompt,
-    )
-    if not response.text:
-        raise Exception("No response from Gemini API")
-
-    return response.text.strip().upper() == "YES"
-
-
-def view_shorts(driver, count: int) -> list[dict]:
+def view_shorts(driver, count: int) -> list[ShortMetadata]:
     """
     View multiple Shorts, capturing metadata for each.
     Returns list of Short metadata.
@@ -154,57 +118,41 @@ def view_shorts(driver, count: int) -> list[dict]:
             print(f"⚠️  Session time limit reached ({config.MAX_SESSION_DURATION}s)")
             break
         
-        # Extract metadata for current Short
-        metadata = extract_current_short_metadata(driver)
-        metadata["view_index"] = i + 1
         
-        title = metadata.get("title", "")[:50] or "(no title)"
-        print(f"   Short {i + 1}/{count} - {title}")
-        
-        # Analyze with LLM and like if conflict-related
-        is_related = is_conflict_related(metadata)
-        metadata["is_conflict_related"] = is_related
+        # Extract full metadata
+        metadata = extract_current_short_metadata(driver, i + 1)
+        print(f"   Short {i + 1}/{count} - {metadata['title'][:50]}")
         
         shorts_data.append(metadata)
         
         # Human-like viewing delay (watching the Short)
-        human_delay(config.SCROLL_DELAY_MIN, config.SCROLL_DELAY_MAX)
+        random_delay(config.SCROLL_DELAY_MIN, config.SCROLL_DELAY_MAX)
         
         # Occasionally watch longer (like rewatching or reading comments)
         if random.random() < 0.1:  # 10% chance
-            extra_delay = human_delay(3.0, 8.0)
+            extra_delay = random_delay(3.0, 8.0)
             print(f"   ... watching longer ({extra_delay:.1f}s)")
         
         # Swipe to next Short (except for last one)
         if i < count - 1:
             if not swipe_to_next_short(driver):
                 print("   Failed to swipe, retrying...")
-                human_delay(1, 2)
+                random_delay(1, 2)
                 swipe_to_next_short(driver)
             
             # Small delay after swipe for video to load
-            human_delay(0.5, 1.5)
+            random_delay(0.5, 1.5)
     
     return shorts_data
 
 
-def save_session(account_id: str, session_id: str, shorts_data: list[dict]):
+def save_session(account_id: str, session_id: str, shorts_data: list[ShortMetadata]):
     """Save session data as a simple JSON file."""
     # Clean up the shorts data to just what we need
-    clean_data = []
-    for short in shorts_data:
-        clean_data.append({
-            "video_id": short.get("video_id"),
-            "url": short.get("url"),
-            "title": short.get("title"),
-            "channel": short.get("channel"),
-            "is_conflict_related": short.get("is_conflict_related", False),
-            "liked": short.get("liked", False),
-        })
     
     session_file = config.OUTPUT_DIR / f"session_{account_id}_{session_id}.json"
     with open(session_file, "w") as f:
-        json.dump(clean_data, f, indent=2)
+        json.dump(shorts_data, f, indent=2)
     print(f"📝 Session saved: {session_file}")
 
 
@@ -241,12 +189,9 @@ def run_capture_session(account_id: str, dry_run: bool = False):
         driver.get(config.YOUTUBE_SHORTS_URL)
         
         # Wait for page with human-like delay
-        human_delay(config.PAGE_LOAD_WAIT_MIN, config.PAGE_LOAD_WAIT_MAX)
+        random_delay(config.PAGE_LOAD_WAIT_MIN, config.PAGE_LOAD_WAIT_MAX)
         
-        if not wait_for_shorts_load(driver):
-            print("❌ Shorts failed to load properly")
-            return False
-        
+        wait_for_shorts_load(driver)
         print("✅ Shorts loaded!")
         
         # View Shorts
@@ -257,13 +202,9 @@ def run_capture_session(account_id: str, dry_run: bool = False):
         if not dry_run:
             save_session(account_id, session_id, shorts_data)
         
-        # Count likes
-        liked_count = sum(1 for s in shorts_data if s.get("liked"))
-        
         print("\n" + "=" * 60)
         print("✅ Session complete!")
         print(f"   Shorts viewed: {len(shorts_data)}")
-        print(f"   Liked: {liked_count}")
         print("=" * 60)
         
         success = True
@@ -286,7 +227,6 @@ def run_capture_session(account_id: str, dry_run: bool = False):
     finally:
         if driver:
             print("\n🔒 Closing browser...")
-            print("View liked photos at: https://www.youtube.com/playlist?list=LL")
             try:
                 driver.quit()
             except Exception:
@@ -301,38 +241,20 @@ def run_setup(account_id: str):
         print(f"❌ Unknown account: {account_id}")
         return False
     
-    print(f"\n🔧 SETUP: Log into YouTube for account '{account_id}'")
     print("   1. Browser will open")
-    print("   2. Log into YouTube/Google")
+    print("   2. Log into Google")
     print("   3. Close browser when done")
     
     setup_directories()
-    driver = None
+    driver = create_driver(account_id, setup_mode=True)
     try:
-        driver = create_driver(account_id, setup_mode=True)
-        driver.get("https://www.youtube.com")
-        
-        print("\n✅ Browser open - log in now, then close the browser")
-        
-        # Wait for browser to close
-        while True:
-            try:
-                _ = driver.current_url
-                time.sleep(1)
-            except Exception:
-                break
-        
-        print("✅ Setup complete!")
-        return True
+        _ = driver.current_url
+        time.sleep(1)
     except KeyboardInterrupt:
         print("\n⚠️  Aborted")
-        return False
     finally:
-        if driver:
-            try:
-                driver.quit()
-            except Exception:
-                pass
+        print("✅ Setup complete!")
+        driver.quit()
 
 
 def main():
