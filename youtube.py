@@ -54,7 +54,7 @@ def extract_transcript(data: dict) -> str:
     for event in data["events"]:
         if "segs" not in event:
             continue
-        text = "".join(seg["utf8"] for seg in event["segs"]).strip()
+        text = " ".join(seg["utf8"].strip() for seg in event["segs"]).replace("  ", " ")
         texts.append(text)
     return " ".join(texts)
 
