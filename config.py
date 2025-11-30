@@ -2,16 +2,29 @@
 Configuration for YouTube Shorts feed capture.
 """
 from pathlib import Path
+from typing import Literal
 
 # === LLM SETTINGS ===
 # Set your Google API key in environment variable GOOGLE_API_KEY
 GEMINI_MODEL = "gemini-2.0-flash"  # Fast and cheap
 
+# Type for the 5 conflict countries we study
+ConflictCountry = Literal["Palestine", "Myanmar", "Ukraine", "Mexico", "Brazil"]
+
 # What content should we like?
-TOPIC = "Palestine"
+TOPIC: ConflictCountry = "Palestine"
+
+# Conflict severity scores (ACLED Conflict Index, December 2024)
+CONFLICT_SCORE_MAP: dict[ConflictCountry, float] = {
+    "Palestine": 2.571,
+    "Myanmar": 1.9,      # Rank 2, Extreme
+    "Ukraine": 1.543,    # Rank 14, High
+    "Mexico": 1.045,     # Rank 4, Extreme
+    "Brazil": 0.785,     # Rank 6, Extreme
+}
 
 # Topic: [...keywords]
-CONFLICT_MAP = {
+CONFLICT_MAP: dict[ConflictCountry, list[str]] = {
     "Palestine": [
         "gaza strip bombardment",
         "rafah invasion",
@@ -79,7 +92,7 @@ CONFLICT_MAP = {
 }
 
 
-def generate_prompt(*, topic: str, **kwargs: str | None) -> str:
+def generate_prompt(*, topic: ConflictCountry, **kwargs: str | None) -> str:
     """Generate an LLM prompt to determine if video content is related to a topic."""
     keywords = CONFLICT_MAP.get(topic)
     if not keywords:
