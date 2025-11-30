@@ -31,17 +31,6 @@ def setup_directories():
     CHROME_PROFILES_DIR.mkdir(exist_ok=True)
 
 
-def kill_chrome_processes():
-    """Kill any lingering Chrome processes that might lock profiles."""
-    print("🔪 Killing any lingering Chrome processes...")
-    try:
-        # macOS/Linux
-        subprocess.run(["pkill", "-f", "Google Chrome"], capture_output=True)
-        subprocess.run(["pkill", "-f", "chrome"], capture_output=True)
-        time.sleep(2)  # Give processes time to die
-    except Exception:
-        pass  # Ignore errors on Windows or if pkill not found
-
 
 def create_driver(account_id: str, setup_mode: bool = False):
     """
@@ -51,8 +40,6 @@ def create_driver(account_id: str, setup_mode: bool = False):
     if not account:
         raise ValueError(f"Unknown account: {account_id}. Check config.py")
     
-    # Kill any lingering Chrome first
-    kill_chrome_processes()
     
     # Use dedicated profile directory for this script
     profile_path = CHROME_PROFILES_DIR / account_id
@@ -181,7 +168,7 @@ def run_capture_session(account_id: str):
         # Setup
         setup_directories()
         
-        print("\n📱 Loading YouTube Shorts...")
+        print("Loading YouTube Shorts...")
         driver.get(config.YOUTUBE_SHORTS_URL)
         
         # Wait for page with human-like delay

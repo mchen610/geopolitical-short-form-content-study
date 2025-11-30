@@ -23,7 +23,7 @@ CONFLICT_MAP = {
 }
 
 
-def generate_prompt(*, topic: str, **kwargs: str) -> str:
+def generate_prompt(*, topic: str, **kwargs: str | None) -> str:
     """Generate an LLM prompt to determine if video content is related to a topic."""
     keywords = CONFLICT_MAP.get(topic)
     if not keywords:

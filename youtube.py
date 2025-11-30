@@ -27,12 +27,13 @@ LIKE_BUTTON = 'button[aria-label*="like this video"]'
 class ShortMetadata(TypedDict):
     url: str
     extracted_at: str
-    title: str
-    channel: str
     video_id: str
     view_index: int
+
+    title: str | None
+    channel: str | None
+    transcript: str | None
     is_conflict_related: bool
-    transcript: str
 
 
 def wait_for_shorts_load(driver: Chrome, timeout: int = 30):
@@ -42,30 +43,30 @@ def wait_for_shorts_load(driver: Chrome, timeout: int = 30):
     random_delay(2, 3)
 
 
-def get_text(driver: Chrome, selector: str) -> str:
+def get_text(driver: Chrome, selector: str) -> str | None:
     """Get text from element, empty string if not found."""
     elements = driver.find_elements(By.CSS_SELECTOR, selector)
-    return elements[0].text.strip() if elements else ""
+    text = elements[0].text.strip() if elements else ""
+    return text.replace('\n', '. ') if text else None
 
-
-def extract_transcript(data: dict) -> str:
-    """Extract joined transcript from timedtext JSON."""
+def extract_transcript(data: dict) -> str | None:
+    """Extract joined transcript from timedtext endpoint response JSON."""
     texts = []
     for event in data["events"]:
         if "segs" not in event:
             continue
         text = " ".join(seg["utf8"].strip() for seg in event["segs"]).replace("  ", " ")
         texts.append(text)
-    return " ".join(texts)
+    transcript = " ".join(texts)
+    return transcript if transcript else None
 
-
-def get_transcript(driver: Chrome, video_id: str) -> str:
+def get_transcript(driver: Chrome, video_id: str) -> str | None:
     for req in driver.requests:
         if "timedtext" in req.url and video_id in req.url and req.response:
             body = req.response.body.decode("utf-8")
             return extract_transcript(json.loads(body))
     # This means the video simply doesn't have a transcript       
-    return ""
+    return None
     
 
 
@@ -89,19 +90,21 @@ def click_like(driver: Chrome):
 def extract_short_metadata(driver: Chrome, view_index: int) -> ShortMetadata:
     """Extract metadata from the currently visible Short."""
     url = driver.current_url
-
-    video_id = url.split("/shorts/")[-1]
+    print()
     print(f"   Short {view_index} - {url}")
     
     title = get_text(driver, TITLE)
     print(f"   Title: {title}")
 
-    channel = get_text(driver, CHANNEL)
 
+    video_id = url.split("/shorts/")[-1]
     transcript = get_transcript(driver, video_id)
-    truncated_transcript = transcript[:70] + "..." + (f"({len(transcript.split(' '))} words)") if transcript else None
-    print(f"   Transcript: {truncated_transcript}")
+    if transcript:
+        print(f"   Transcript: {transcript[:70]}...({len(transcript.split(' '))} words)")
+    else:
+        print(f"   Transcript: {transcript}")
 
+    channel = get_text(driver, CHANNEL)
     is_related = is_conflict_related(topic=config.TOPIC, title=title, channel=channel, transcript=transcript)
     if is_related:
         click_like(driver)
