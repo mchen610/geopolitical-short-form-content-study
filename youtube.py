@@ -12,6 +12,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import StaleElementReferenceException
 from seleniumwire.undetected_chromedriver import Chrome  # type: ignore[import-untyped]
 
 import config
@@ -44,10 +45,18 @@ def wait_for_shorts_load(driver: Chrome, timeout: int = 30):
 
 
 def get_text(driver: Chrome, selector: str) -> str | None:
-    """Get text from element, empty string if not found."""
-    elements = driver.find_elements(By.CSS_SELECTOR, selector)
-    text = elements[0].text.strip() if elements else ""
-    return text.replace('\n', '. ') if text else None
+    """Get text from element, with retry for stale elements."""
+    for _ in range(10):
+        try:
+            elements = driver.find_elements(By.CSS_SELECTOR, selector)
+            if not elements:
+                return None
+            text = elements[0].text.strip()
+            return text.replace('\n', '. ') if text else None
+        except StaleElementReferenceException:
+                time.sleep(0.1)
+                continue
+    return None
 
 def extract_transcript(data: dict) -> str | None:
     """Extract joined transcript from timedtext endpoint response JSON."""
