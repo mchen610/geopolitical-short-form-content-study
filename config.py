@@ -11,8 +11,8 @@ GEMINI_MODEL = "gemini-2.0-flash"  # Fast and cheap
 # Type for the 5 conflict countries we study
 ConflictCountry = Literal["Palestine", "Myanmar", "Ukraine", "Mexico", "Brazil"]
 
-# What content should we like?
-TOPIC: ConflictCountry = "Palestine"
+# Which conflict region are we studying?
+CONFLICT_REGION: ConflictCountry = "Palestine"
 
 # Conflict severity scores (ACLED Conflict Index, December 2024)
 CONFLICT_SCORE_MAP: dict[ConflictCountry, float] = {
@@ -23,8 +23,8 @@ CONFLICT_SCORE_MAP: dict[ConflictCountry, float] = {
     "Brazil": 0.785,     # Rank 6, Extreme
 }
 
-# Topic: [...keywords]
-CONFLICT_MAP: dict[ConflictCountry, list[str]] = {
+# Conflict region -> search keywords for identifying related content
+CONFLICT_KEYWORDS: dict[ConflictCountry, list[str]] = {
     "Palestine": [
         "gaza strip bombardment",
         "rafah invasion",
@@ -92,25 +92,23 @@ CONFLICT_MAP: dict[ConflictCountry, list[str]] = {
 }
 
 
-def generate_prompt(*, topic: ConflictCountry, **kwargs: str | None) -> str:
-    """Generate an LLM prompt to determine if video content is related to a topic."""
-    keywords = CONFLICT_MAP.get(topic)
+def build_prompt(*, conflict_region: ConflictCountry, **kwargs: str | None) -> str:
+    keywords = CONFLICT_KEYWORDS.get(conflict_region)
     if not keywords:
-        raise ValueError(f"No keywords defined for topic: {topic}")
+        raise ValueError(f"No keywords defined for conflict region: {conflict_region}")
     
     keywords_list = "\n".join(f"- {kw}" for kw in keywords)
     details = "\n".join(f"{key.capitalize()}: {value}" for key, value in kwargs.items())
     
-    return f"""Analyze these video details and determine if it's related to the topic.
+    return f"""You are classifying whether a YouTube Short is related to a given conflict in a given region.
 
-<topic>
-{topic}
-</topic>
+<video_details>
+{details}
+</video_details>
 
-Consider as RELATED if mentions any of the following:
+The video is RELATED if it covers any of these related to the conflict region {conflict_region}:
 {keywords_list}
 
-{details}
 
 Respond with ONLY "YES" or "NO"."""
 

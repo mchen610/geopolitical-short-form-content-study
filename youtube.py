@@ -105,7 +105,7 @@ def extract_short_metadata(driver: Chrome, view_index: int) -> ShortMetadata:
         print(f"   Transcript: {transcript}")
 
     channel = get_text(driver, CHANNEL)
-    is_related = is_conflict_related(topic=config.TOPIC, title=title, channel=channel, transcript=transcript)
+    is_related = is_conflict_related(conflict_region=config.CONFLICT_REGION, title=title, channel=channel, transcript=transcript)
     if is_related:
         click_like(driver)
         print("   ❤️ Liked!")

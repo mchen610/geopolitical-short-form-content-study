@@ -10,12 +10,12 @@ load_dotenv()
 gemini_client = genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
 
 
-def is_conflict_related(*, topic: str, **kwargs: str | None) -> bool:
+def is_conflict_related(*, conflict_region: config.ConflictCountry, **kwargs: str | None) -> bool:
     """
-    Use LLM to determine if the Short is related to Israel-Palestine conflict.
+    Use LLM to determine if the Short is related to an armed conflict region.
     """
-    prompt = config.generate_prompt(
-        topic=topic,
+    prompt = config.build_prompt(
+        conflict_region=conflict_region,
         **kwargs,
     )
 
