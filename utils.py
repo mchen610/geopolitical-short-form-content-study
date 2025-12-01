@@ -12,3 +12,4 @@ def random_delay(min_sec: float, max_sec: float):
     time.sleep(delay)
     return delay
 
+
