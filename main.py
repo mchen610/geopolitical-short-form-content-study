@@ -177,9 +177,13 @@ def run_capture_session(account_id: str):
         print(f"\n🎬 Viewing Shorts ({config.SHORTS_PER_SESSION} videos)...")
         shorts_data = view_shorts(driver, config.SHORTS_PER_SESSION, account_id, session_id, conflict_region)
         
+        num_related = sum(1 for s in shorts_data if s["is_conflict_related"])
         print("\n" + "=" * 60)
         print("✅ Session complete!")
+        print(f"   Conflict region: {conflict_region}")
         print(f"   Shorts viewed: {len(shorts_data)}")
+        print(f"   Related: {num_related}")
+        print(f"   Not related: {len(shorts_data) - num_related}")
         print("=" * 60)
         
         success = True
