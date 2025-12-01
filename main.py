@@ -1,6 +1,5 @@
 import argparse
 import json
-import random
 import sys
 import time
 from datetime import datetime
@@ -87,7 +86,7 @@ def create_driver(account_id: str, setup_mode: bool = False):
         print("\n⚠️  Make sure Chrome is completely closed (pkill -f chrome)")
         raise
 
-def view_shorts(driver: uc.Chrome, count: int, account_id: str, session_id: str) -> list[ShortMetadata]:
+def view_shorts(driver: uc.Chrome, count: int, account_id: str, session_id: str, conflict_region: config.ConflictCountry) -> list[ShortMetadata]:
     """
     View multiple Shorts, capturing metadata for each.
     Saves after every short processed.
@@ -108,7 +107,7 @@ def view_shorts(driver: uc.Chrome, count: int, account_id: str, session_id: str)
             break
         
         # Extract full metadata
-        metadata = extract_short_metadata(driver, i + 1)
+        metadata = extract_short_metadata(driver, i + 1, conflict_region)
         shorts_data.append(metadata)
         
         # Save after every short
@@ -118,12 +117,8 @@ def view_shorts(driver: uc.Chrome, count: int, account_id: str, session_id: str)
         clear_requests(driver)
         
         # Human-like viewing delay (watching the Short)
-        random_delay(config.SCROLL_DELAY_MIN, config.SCROLL_DELAY_MAX)
-        
-        # Occasionally watch longer (like rewatching or reading comments)
-        if random.random() < 0.1:  # 10% chance
-            extra_delay = random_delay(3.0, 8.0)
-            print(f"   ... watching longer ({extra_delay:.1f}s)")
+        if metadata["is_conflict_related"]:
+            random_delay(config.SCROLL_DELAY_MIN, config.SCROLL_DELAY_MAX)
         
         # Swipe to next Short (except for last one)
         if i < count - 1:
@@ -162,12 +157,15 @@ def run_capture_session(account_id: str):
     
     success = False
     driver = create_driver(account_id)
+
+    conflict_region: config.ConflictCountry = "Brazil"
+
     try:
         # Setup
         setup_directories()
         
         print("Loading YouTube Shorts...")
-        driver.get(config.YOUTUBE_SHORTS_URL)
+        driver.get(config.CONFLICT_URLS[conflict_region])
         
         # Wait for page with human-like delay
         random_delay(config.PAGE_LOAD_WAIT_MIN, config.PAGE_LOAD_WAIT_MAX)
@@ -177,7 +175,7 @@ def run_capture_session(account_id: str):
         
         # View Shorts (saves after each one)
         print(f"\n🎬 Viewing Shorts ({config.SHORTS_PER_SESSION} videos)...")
-        shorts_data = view_shorts(driver, config.SHORTS_PER_SESSION, account_id, session_id)
+        shorts_data = view_shorts(driver, config.SHORTS_PER_SESSION, account_id, session_id, conflict_region)
         
         print("\n" + "=" * 60)
         print("✅ Session complete!")

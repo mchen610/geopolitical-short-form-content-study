@@ -11,9 +11,6 @@ GEMINI_MODEL = "gemini-2.0-flash"  # Fast and cheap
 # Type for the 5 conflict countries we study
 ConflictCountry = Literal["Palestine", "Myanmar", "Ukraine", "Mexico", "Brazil"]
 
-# Which conflict region are we studying?
-CONFLICT_REGION: ConflictCountry = "Palestine"
-
 # Conflict severity scores (ACLED Conflict Index, December 2024)
 CONFLICT_SCORE_MAP: dict[ConflictCountry, float] = {
     "Palestine": 2.571,
@@ -91,6 +88,15 @@ CONFLICT_KEYWORDS: dict[ConflictCountry, list[str]] = {
     ]
 }
 
+CONFLICT_URLS: dict[ConflictCountry, str] = {
+    "Palestine": "https://www.youtube.com/shorts/748bcs7b_Zk",
+    "Myanmar": "https://www.youtube.com/shorts/Ero5GvpR4ng",
+    "Ukraine": "https://www.youtube.com/shorts/So4vUZpTWro",
+    "Mexico": "https://www.youtube.com/shorts/VDhVJhSg1LA",
+    "Brazil": "https://www.youtube.com/shorts/9kRqoe4-l8U",
+
+}
+
 
 def build_prompt(*, conflict_region: ConflictCountry, **kwargs: str | None) -> str:
     keywords = CONFLICT_KEYWORDS.get(conflict_region)
@@ -131,8 +137,8 @@ PAGE_LOAD_WAIT_MAX = 5
 
 # Delay between scrolls (simulating watching a Short)
 # Shorts are typically 15-60 seconds, so we simulate partial watching
-SCROLL_DELAY_MIN = 4.0
-SCROLL_DELAY_MAX = 6.0
+SCROLL_DELAY_MIN = 15.0
+SCROLL_DELAY_MAX = 30.0
 
 # Number of Shorts to view per session
 # Each scroll = 1 Short viewed
@@ -147,6 +153,3 @@ VIEWPORT_HEIGHT = 900
 
 # Output directory for session JSON files
 OUTPUT_DIR = Path("./data")
-
-# This is an israel v palestine conflict related short. We wanna start here
-YOUTUBE_SHORTS_URL = "https://www.youtube.com/shorts/LRBvm_hQKqE"

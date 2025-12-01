@@ -4,6 +4,7 @@ YouTube Shorts extraction - DOM interactions and network capture.
 
 import json
 from datetime import datetime
+import time
 from zoneinfo import ZoneInfo
 from typing import TypedDict
 
@@ -96,7 +97,7 @@ def click_like(driver: Chrome):
         print("   Like button not found or not clickable")
 
 
-def extract_short_metadata(driver: Chrome, view_index: int) -> ShortMetadata:
+def extract_short_metadata(driver: Chrome, view_index: int, conflict_region: config.ConflictCountry) -> ShortMetadata:
     """Extract metadata from the currently visible Short."""
     url = driver.current_url
     print()
@@ -114,7 +115,7 @@ def extract_short_metadata(driver: Chrome, view_index: int) -> ShortMetadata:
         print(f"   Transcript: {transcript}")
 
     channel = get_text(driver, CHANNEL)
-    is_related = is_conflict_related(conflict_region=config.CONFLICT_REGION, title=title, channel=channel, transcript=transcript)
+    is_related = is_conflict_related(conflict_region=conflict_region, title=title, channel=channel, transcript=transcript)
     if is_related:
         click_like(driver)
         print("   ❤️ Liked!")
