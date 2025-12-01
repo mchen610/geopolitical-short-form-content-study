@@ -111,7 +111,7 @@ def view_shorts(driver: uc.Chrome, count: int, account_id: str, session_id: str,
         shorts_data.append(metadata)
         
         # Save after every short
-        save_session(account_id, session_id, shorts_data)
+        save_session(account_id, conflict_region, session_id, shorts_data)
         
         # Clear network requests to avoid matching old timedtext data
         clear_requests(driver)
@@ -128,11 +128,11 @@ def view_shorts(driver: uc.Chrome, count: int, account_id: str, session_id: str,
     return shorts_data
 
 
-def save_session(account_id: str, session_id: str, shorts_data: list[ShortMetadata]):
+def save_session(account_id: str, region: str, session_id: str, shorts_data: list[ShortMetadata]):
     """Save session data as a simple JSON file."""
     # Clean up the shorts data to just what we need
     
-    session_file = config.OUTPUT_DIR / f"session_{account_id}_{session_id}.json"
+    session_file = config.OUTPUT_DIR / f"{account_id}_{region}_{session_id}.json"
     with open(session_file, "w", encoding="utf-8") as f:
         json.dump(shorts_data, f, indent=2, ensure_ascii=False)
 
