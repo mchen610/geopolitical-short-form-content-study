@@ -234,15 +234,6 @@ SESSIONS_PER_COUNTRY = 5
 # === TIMING CONTROLS ===
 # All times in seconds
 
-# Initial page load wait
-PAGE_LOAD_WAIT_MIN = 3
-PAGE_LOAD_WAIT_MAX = 5
-
-# Delay between scrolls (simulating watching a Short)
-# Shorts are typically 15-60 seconds, so we simulate partial watching
-SCROLL_DELAY_MIN = 15.0
-SCROLL_DELAY_MAX = 30.0
-
 # Number of Shorts to view per session
 # Each scroll = 1 Short viewed
 SHORTS_PER_SESSION = 20

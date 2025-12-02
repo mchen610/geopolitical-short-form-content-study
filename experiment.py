@@ -64,10 +64,6 @@ def view_shorts(driver: uc.Chrome, count: int, account_id: str, session_id: str,
         # Clear network requests to avoid matching old timedtext data
         clear_requests(driver)
         
-        # Human-like viewing delay (watching the Short)
-        if metadata["is_conflict_related"]:
-            random_delay(config.SCROLL_DELAY_MIN, config.SCROLL_DELAY_MAX)
-        
         # Swipe to next Short (except for last one)
         if i < count - 1:
             swipe_to_next_short(driver)
@@ -109,7 +105,6 @@ def run_capture_session(account_id: str, conflict_region: config.ConflictCountry
         
         print("Loading YouTube Shorts...")
         driver.get(start_url)
-        random_delay(config.PAGE_LOAD_WAIT_MIN, config.PAGE_LOAD_WAIT_MAX)
         wait_for_shorts_load(driver)
         print("✅ Shorts loaded!")
         
