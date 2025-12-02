@@ -179,10 +179,15 @@ Your response must be exactly one of: PALESTINE, MYANMAR, UKRAINE, MEXICO, or NO
 # This eliminates order effects as a confounding variable
 ACCOUNT_COUNTRY_ORDER: dict[str, list[ConflictCountry]] = {
     "test": ["Palestine", "Myanmar", "Ukraine", "Mexico"],
+    # We use profile 1 for blocking design
     "profile_1": ["Palestine", "Myanmar", "Ukraine", "Mexico"],
+    
+    # These 4 are the main ones where we use staggered design
     "profile_2": ["Myanmar", "Ukraine", "Mexico", "Palestine"],
     "profile_3": ["Ukraine", "Mexico", "Palestine", "Myanmar"],
     "profile_4": ["Mexico", "Palestine", "Myanmar", "Ukraine"],
+    "profile_5": ["Palestine", "Myanmar", "Ukraine", "Mexico"],
+
 }
 
 ACCOUNTS = set(ACCOUNT_COUNTRY_ORDER.keys())

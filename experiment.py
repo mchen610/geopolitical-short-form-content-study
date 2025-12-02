@@ -135,9 +135,10 @@ def run_capture_session(account_id: str, conflict_region: config.ConflictCountry
 
 def run_full_experiment(account_id: str) -> bool:
     """
-    Run the full experiment for an account:
-    - Goes through all 5 countries in the pre-assigned random order
-    - Runs SESSIONS_PER_COUNTRY sessions per country (5 * 15 = 75 shorts per country)
+    Run the full experiment for an account using STAGGERED design:
+    - Each round cycles through all countries in the pre-assigned order
+    - Runs SESSIONS_PER_COUNTRY rounds total
+    - This controls for temporal confounds (all countries get early + late sessions)
     """
     if account_id not in config.ACCOUNT_COUNTRY_ORDER:
         print(f"❌ No country order defined for account: {account_id}")
@@ -145,37 +146,38 @@ def run_full_experiment(account_id: str) -> bool:
         return False
     
     country_order = config.ACCOUNT_COUNTRY_ORDER[account_id]
+    total_sessions = len(country_order) * config.SESSIONS_PER_COUNTRY
     
     print("\n" + "=" * 60)
-    print(f"🔬 FULL EXPERIMENT - Account: {account_id}")
-    print(f"   Country order: {' → '.join(country_order)}")
-    print(f"   Sessions per country: {config.SESSIONS_PER_COUNTRY}")
+    print(f"🔬 FULL EXPERIMENT (STAGGERED) - Account: {account_id}")
+    print(f"   Rotation order: {' → '.join(country_order)}")
+    print(f"   Rounds: {config.SESSIONS_PER_COUNTRY}")
+    print(f"   Sessions per round: {len(country_order)} (one per country)")
     print(f"   Shorts per session: {config.SHORTS_PER_SESSION}")
     print(f"   Total shorts per country: {config.SESSIONS_PER_COUNTRY * config.SHORTS_PER_SESSION}")
-    print(f"   Total shorts overall: {len(country_order) * config.SESSIONS_PER_COUNTRY * config.SHORTS_PER_SESSION}")
+    print(f"   Total shorts overall: {total_sessions * config.SHORTS_PER_SESSION}")
     print("=" * 60)
     
-    for country_idx, country in enumerate(country_order, 1):
+    session_counter = 0
+    for round_num in range(1, config.SESSIONS_PER_COUNTRY + 1):
         print(f"\n{'='*60}")
-        print(f"🌍 COUNTRY {country_idx}/{len(country_order)}: {country}")
+        print(f"🔄 ROUND {round_num}/{config.SESSIONS_PER_COUNTRY}")
         print(f"{'='*60}")
         
-        for session_num in range(1, config.SESSIONS_PER_COUNTRY + 1):
-            print(f"\n📺 Session {session_num}/{config.SESSIONS_PER_COUNTRY} for {country}")
+        for country_idx, country in enumerate(country_order):
+            session_counter += 1
+            country_session = get_session_count_for_country(account_id, country) + 1
+            
+            print(f"\n📺 Session {session_counter}/{total_sessions} | {country} (#{country_session})")
             success = run_capture_session(account_id, country)
             
             if not success:
                 print("⚠️  Session failed, continuing to next...")
             
-            # Delay between sessions
-            if session_num < config.SESSIONS_PER_COUNTRY:
+            # Delay between sessions within a round
+            if country_idx < len(country_order) - 1:
                 random_delay(2, 5)
-
-        # Delay between countries
-        if country_idx < len(country_order):
-            print("\n⏳ Switching to next country...")
-            random_delay(3, 6)
-    
+        
     print("\n" + "=" * 60)
     print(f"🎉 EXPERIMENT COMPLETE for {account_id}")
     print("=" * 60)

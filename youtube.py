@@ -127,9 +127,9 @@ def clear_requests(driver: Chrome):
 
 def click_like(driver: Chrome):
     """Click the like button if not already liked."""
-    for _ in range(5):
+    for _ in range(3):
         try:
-            btn = WebDriverWait(driver, 10).until(
+            btn = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, LIKE_BUTTON))
             )
             if btn.get_attribute("aria-pressed") == "true":
@@ -151,7 +151,7 @@ def watch_entire_video(duration_seconds: float | None):
         return
     
     print(f"   ⏱️ Watching full video ({duration_seconds:.1f}s)...")
-    time.sleep(min(duration_seconds, max_duration) - 2)
+    time.sleep(max(min(duration_seconds, max_duration) - 2, 0))
     print(f"   ✅ Watched for {min(duration_seconds, max_duration):.1f}s (maxed out at {max_duration}s)")
 
 
