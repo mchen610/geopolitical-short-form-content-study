@@ -137,7 +137,7 @@ def watch_entire_video(duration_seconds: float | None):
     print(f"   ✅ Watched for {duration_seconds:.1f}s")
 
 
-def extract_short_metadata(driver: Chrome, view_index: int, conflict_region: config.ConflictCountry) -> ShortMetadata:
+def extract_short_metadata(driver: Chrome, view_index: int, conflict_region: config.ConflictCountry, test_mode: bool = False) -> ShortMetadata:
     """Extract metadata from the currently visible Short."""
     url = driver.current_url
     print()
@@ -165,7 +165,8 @@ def extract_short_metadata(driver: Chrome, view_index: int, conflict_region: con
     if is_related:
         click_like(driver)
         print("   ❤️ Liked!")
-        watch_entire_video(duration_seconds)
+        if not test_mode:
+            watch_entire_video(duration_seconds)
     else:
         print("   ❌ Ignored")
     

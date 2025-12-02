@@ -16,6 +16,7 @@ from youtube import (
     swipe_to_next_short,
     wait_for_shorts_load,
 )
+from tests import run_test_links
 
 # Directory for this script's dedicated Chrome profiles
 CHROME_PROFILES_DIR = Path("./chrome_profiles")
@@ -169,10 +170,7 @@ def run_capture_session(account_id: str, conflict_region: config.ConflictCountry
         
         print("Loading YouTube Shorts...")
         driver.get(start_url)
-        
-        # Wait for page with human-like delay
         random_delay(config.PAGE_LOAD_WAIT_MIN, config.PAGE_LOAD_WAIT_MAX)
-        
         wait_for_shorts_load(driver)
         print("✅ Shorts loaded!")
         
@@ -286,6 +284,7 @@ def main():
     parser.add_argument("--setup", "-s", action="store_true", help="Setup: log into YouTube")
     parser.add_argument("--list-accounts", "-l", action="store_true", help="List accounts")
     parser.add_argument("--run", "-r", action="store_true", help="Run full experiment for account")
+    parser.add_argument("--test", "-t", nargs="?", const="ALL", metavar="COUNTRY", help="Test URLs (all countries if none specified, uses test account)")
     
     args = parser.parse_args()
     
@@ -299,6 +298,20 @@ def main():
             if order:
                 print(f"    Order: {' → '.join(order)}")
         return
+    
+    if args.test:
+        if args.test == "ALL":
+            # Test all countries
+            success = run_test_links(create_driver, setup_directories, None)
+        else:
+            # Validate country
+            valid_countries = list(config.CONFLICT_URLS.keys())
+            if args.test not in valid_countries:
+                print(f"❌ Unknown country: {args.test}")
+                print(f"   Valid countries: {valid_countries}")
+                sys.exit(1)
+            success = run_test_links(create_driver, setup_directories, args.test)
+        sys.exit(0 if success else 1)
     
     if not args.account:
         print("❌ Please specify an account with --account")
