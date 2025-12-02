@@ -112,6 +112,8 @@ def extract_short_metadata(driver: Chrome, view_index: int, conflict_region: con
     url = driver.current_url
     print()
     print(f"   Short {view_index} - {url}")
+
+    random_delay(2, 4) # wait for the short to load
     
     title = get_text(driver, TITLE)
     print(f"   Title: {title}")

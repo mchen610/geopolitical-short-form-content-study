@@ -33,8 +33,7 @@ def create_driver(account_id: str, setup_mode: bool = False):
     """
     Create an undetected Chrome driver with a dedicated profile for this account.
     """
-    account = config.ACCOUNTS.get(account_id)
-    if not account:
+    if account_id not in config.ACCOUNTS:
         raise ValueError(f"Unknown account: {account_id}. Check config.py")
     
     
@@ -55,14 +54,11 @@ def create_driver(account_id: str, setup_mode: bool = False):
     # Window size
     options.add_argument(f"--window-size={config.VIEWPORT_WIDTH},{config.VIEWPORT_HEIGHT}")
     
-    # Disable notifications
     options.add_argument("--disable-notifications")
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--mute-audio")
     options.add_argument("--no-first-run")
     options.add_argument("--no-default-browser-check")
-    
-    # Required for Selenium Wire proxy (intercepts HTTPS traffic)
     options.add_argument("--ignore-certificate-errors")
     
     # Selenium Wire options - only capture timedtext requests to reduce proxy load
@@ -73,18 +69,14 @@ def create_driver(account_id: str, setup_mode: bool = False):
         ],
     }
     
-    try:
-        driver = uc.Chrome(
-            options=options,
-            seleniumwire_options=seleniumwire_options,
-            version_main=None
-        )
-        driver.set_window_size(config.VIEWPORT_WIDTH, config.VIEWPORT_HEIGHT)
-        return driver
-    except Exception as e:
-        print(f"❌ Failed to create driver: {e}")
-        print("\n⚠️  Make sure Chrome is completely closed (pkill -f chrome)")
-        raise
+    driver = uc.Chrome(
+        options=options,
+        seleniumwire_options=seleniumwire_options,
+        version_main=None,
+        window_height=config.VIEWPORT_HEIGHT,
+        window_width=config.VIEWPORT_WIDTH,
+    )
+    return driver
 
 def view_shorts(driver: uc.Chrome, count: int, account_id: str, session_id: str, conflict_region: config.ConflictCountry) -> list[ShortMetadata]:
     """
@@ -137,7 +129,7 @@ def save_session(account_id: str, region: str, session_id: str, shorts_data: lis
         json.dump(shorts_data, f, indent=2, ensure_ascii=False)
 
 
-def run_capture_session(account_id: str):
+def run_capture_session(account_id: str, conflict_region: config.ConflictCountry):
     """
     Run a single Shorts capture session for the given account.
     """
@@ -148,7 +140,7 @@ def run_capture_session(account_id: str):
     # Validate account
     if account_id not in config.ACCOUNTS:
         print(f"❌ Unknown account: {account_id}")
-        print(f"   Available accounts: {list(config.ACCOUNTS.keys())}")
+        print(f"   Available accounts: {config.ACCOUNTS}")
         return False
     
     # Generate session ID in Eastern time with AM/PM
@@ -158,7 +150,6 @@ def run_capture_session(account_id: str):
     success = False
     driver = create_driver(account_id)
 
-    conflict_region: config.ConflictCountry = "Brazil"
 
     try:
         # Setup
@@ -210,14 +201,18 @@ def run_setup(account_id: str):
     
     setup_directories()
     driver = create_driver(account_id, setup_mode=True)
-    try:
-        _ = driver.current_url
-        time.sleep(1)
-    except KeyboardInterrupt:
-        print("\n⚠️  Aborted")
-    finally:
-        print("✅ Setup complete!")
-        driver.quit()
+    while True:
+        try:
+            _ = driver.current_url
+        except KeyboardInterrupt:
+            print("\n⚠️  Aborted")
+            driver.quit()
+            return False
+        except Exception:
+            break
+    print("✅ Setup complete!")
+    driver.quit()
+    return True
 
 
 def main():
@@ -234,22 +229,23 @@ def main():
     
     if args.list_accounts:
         print("\nAccounts:")
-        for acc_id, acc_info in config.ACCOUNTS.items():
+        for acc_id in config.ACCOUNTS:
             profile_path = CHROME_PROFILES_DIR / acc_id
             status = "✅" if profile_path.exists() else "❌ needs --setup"
             print(f"  {acc_id}: {status}")
         return
     
     if not args.account:
-        args.account = list(config.ACCOUNTS.keys())[0]
+        args.account = list(config.ACCOUNTS)[1]
         print(f"Using default account: {args.account}")
     
     if args.setup:
         success = run_setup(args.account)
         sys.exit(0 if success else 1)
     
-    success = run_capture_session(args.account)
-    sys.exit(0 if success else 1)
+    for i in range(10):
+        run_capture_session(args.account, "Mexico")
+        random_delay(1, 2)
 
 
 if __name__ == "__main__":

@@ -91,7 +91,7 @@ CONFLICT_KEYWORDS: dict[ConflictCountry, list[str]] = {
 CONFLICT_URLS: dict[ConflictCountry, str] = {
     "Palestine": "https://www.youtube.com/shorts/748bcs7b_Zk",
     "Myanmar": "https://www.youtube.com/shorts/Ero5GvpR4ng",
-    "Ukraine": "https://www.youtube.com/shorts/So4vUZpTWro",
+    "Ukraine": "https://www.youtube.com/shorts/hb1YZBBGeGY",
     "Mexico": "https://www.youtube.com/shorts/VDhVJhSg1LA",
     "Brazil": "https://www.youtube.com/shorts/9kRqoe4-l8U",
 
@@ -122,11 +122,13 @@ Respond with ONLY "YES" or "NO"."""
 # Each account gets a dedicated profile in ./chrome_profiles/
 # Run --setup to log in for the first time
 
-ACCOUNTS = {
-    "neutral_1": {
-        "description": "No interests set, no engagement"
-    },
-}
+ACCOUNTS = set([
+    "profile_1",
+    "profile_2",
+    "profile_3",
+    "profile_4",
+    "profile_5",
+])
 
 # === TIMING CONTROLS ===
 # All times in seconds
@@ -142,7 +144,7 @@ SCROLL_DELAY_MAX = 30.0
 
 # Number of Shorts to view per session
 # Each scroll = 1 Short viewed
-SHORTS_PER_SESSION = 50
+SHORTS_PER_SESSION = 15
 
 # Total session time limit (seconds) - fail-safe
 MAX_SESSION_DURATION = 6000
