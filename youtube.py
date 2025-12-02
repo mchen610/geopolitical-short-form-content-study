@@ -125,34 +125,33 @@ def clear_requests(driver: Chrome):
     del driver.requests
 
 
-def click_like(driver: Chrome):
-    """Click the like button if not already liked."""
+def click_like(driver: Chrome) -> float:
+    """Click the like button if not already liked. Returns seconds elapsed."""
+    start = time.time()
     for _ in range(3):
         try:
-            btn = WebDriverWait(driver, 5).until(
+            btn = WebDriverWait(driver, 3).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, LIKE_BUTTON))
             )
             if btn.get_attribute("aria-pressed") == "true":
                 print("   Already liked")
-                return
+                return time.time() - start
             ActionChains(driver).move_to_element(btn).click(btn).perform()
             print("   Successfully liked")
-            return
+            return time.time() - start
         except Exception:
             print("   Like button not found or not clickable")
+    return time.time() - start
 
 
-def watch_entire_video(duration_seconds: float | None):
-    # For consistency, max it out
-    max_duration = 30
-    if duration_seconds is None:
-        print(f"   ⚠️ Could not get video duration, waiting {max_duration}s")
-        time.sleep(max_duration - 2)
-        return
-    
-    print(f"   ⏱️ Watching full video ({duration_seconds:.1f}s)...")
-    time.sleep(max(min(duration_seconds, max_duration) - 2, 0))
-    print(f"   ✅ Watched for {min(duration_seconds, max_duration):.1f}s (maxed out at {max_duration}s)")
+MAX_WATCH_DURATION = 30
+
+def watch_entire_video(remaining_seconds: float):
+    """Watch video for the specified remaining time (capped at MAX_WATCH_DURATION)."""
+    watch_time = max(min(remaining_seconds, MAX_WATCH_DURATION), 0)
+    print(f"   ⏱️ Watching for {watch_time:.1f}s...")
+    time.sleep(watch_time)
+    print("   ✅ Done")
 
 
 def extract_short_metadata(driver: Chrome, conflict_region: config.ConflictCountry, test_mode: bool = False) -> ShortMetadata:
@@ -181,9 +180,10 @@ def extract_short_metadata(driver: Chrome, conflict_region: config.ConflictCount
     channel = get_text(driver, CHANNEL)
     is_related = is_conflict_related(conflict_region=conflict_region, title=title, channel=channel, transcript=transcript)
     if is_related:
-        click_like(driver)
+        elapsed = click_like(driver)
         if not test_mode:
-            watch_entire_video(duration_seconds)
+            duration = duration_seconds if duration_seconds else MAX_WATCH_DURATION
+            watch_entire_video(duration - elapsed)
     else:
         print("   ❌ Ignored")
     
