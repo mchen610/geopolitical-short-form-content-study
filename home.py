@@ -134,7 +134,6 @@ def run_home_feed(account_id: str) -> bool:
     print(f"   Sessions: {config.HOME_SESSIONS}")
     print(f"   Shorts per session: {config.HOME_SHORTS_PER_SESSION}")
     print(f"   Total shorts: {config.HOME_SESSIONS * config.HOME_SHORTS_PER_SESSION}")
-    print(f"   View time per short: {config.HOME_VIEW_TIME}s")
     print("   Engagement: None (observe only)")
     print("=" * 60)
     

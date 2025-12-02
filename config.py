@@ -110,7 +110,8 @@ CONFLICT_URLS: dict[ConflictCountry, list[str]] = {
         "https://www.youtube.com/shorts/AIyDCIGRiQ4",
         "https://www.youtube.com/shorts/N1YBMHUTA-s",
         "https://www.youtube.com/shorts/h2RRJjrsXfQ",
-        "https://www.youtube.com/shorts/MYZHYvtBZ7M"
+        "https://www.youtube.com/shorts/MYZHYvtBZ7M",
+        "https://www.youtube.com/shorts/I27-kbB17y4",
     ],
     "Ukraine": [
         "https://www.youtube.com/shorts/gmQ5T1xCdtM",
@@ -133,34 +134,19 @@ CONFLICT_URLS: dict[ConflictCountry, list[str]] = {
         "https://www.youtube.com/shorts/mUzIhnQEW90",
         "https://www.youtube.com/shorts/WzWhYgDFsJs",
         "https://www.youtube.com/shorts/oOxdW3MUKMI",
-        "https://www.youtube.com/shorts/y-NZRWmhMkg"
+        "https://www.youtube.com/shorts/y-NZRWmhMkg",
+        "https://www.youtube.com/shorts/QyL-89u2FGs",
     ],
     "Brazil": [
         "https://www.youtube.com/shorts/r4RRtBWMCXA",
-        "https://www.youtube.com/shorts/r4RRtBWMCXA",
-        "https://www.youtube.com/shorts/r4RRtBWMCXA",
-        "https://www.youtube.com/shorts/PAqvULOfze8",
-        "https://www.youtube.com/shorts/PAqvULOfze8",
         "https://www.youtube.com/shorts/PAqvULOfze8",
         "https://www.youtube.com/shorts/YJydcu2qp_8",
-        "https://www.youtube.com/shorts/YJydcu2qp_8",
-        "https://www.youtube.com/shorts/YJydcu2qp_8",
-        "https://www.youtube.com/shorts/9kRqoe4-l8U",
-        "https://www.youtube.com/shorts/9kRqoe4-l8U",
         "https://www.youtube.com/shorts/9kRqoe4-l8U",
         "https://www.youtube.com/shorts/ljB_2HESmHs",
         "https://www.youtube.com/shorts/Z5_K9FJrGrQ",
-        "https://www.youtube.com/shorts/Z5_K9FJrGrQ",
-        "https://www.youtube.com/shorts/Z5_K9FJrGrQ",
         "https://www.youtube.com/shorts/R-yxoWiDz8w",
         "https://www.youtube.com/shorts/RBwtXgs-NGE",
-        "https://www.youtube.com/shorts/RBwtXgs-NGE",
-        "https://www.youtube.com/shorts/RBwtXgs-NGE",
         "https://www.youtube.com/shorts/6ZIA5G78FuU",
-        "https://www.youtube.com/shorts/6ZIA5G78FuU",
-        "https://www.youtube.com/shorts/6ZIA5G78FuU",
-        "https://www.youtube.com/shorts/gjKrsAprFYk",
-        "https://www.youtube.com/shorts/gjKrsAprFYk",
         "https://www.youtube.com/shorts/gjKrsAprFYk"
     ],
 }
@@ -228,21 +214,14 @@ ACCOUNT_COUNTRY_ORDER: dict[str, list[ConflictCountry]] = {
 
 ACCOUNTS = set(ACCOUNT_COUNTRY_ORDER.keys())
 
-# Number of sessions to run per country (5 sessions * 15 shorts = 75 shorts per country)
-SESSIONS_PER_COUNTRY = 5
-
-# === TIMING CONTROLS ===
-# All times in seconds
-
-# Number of Shorts to view per session
-# Each scroll = 1 Short viewed
-SHORTS_PER_SESSION = 20
+# Number of sessions to run per country X shorts per session = total shorts per country
+SESSIONS_PER_COUNTRY = 10
+SHORTS_PER_SESSION = 5
 
 # === PHASE 2: HOME FEED MEASUREMENT ===
 # After training, we measure what YouTube shows in the general home feed
-HOME_SESSIONS = 10
-HOME_SHORTS_PER_SESSION = 50
-HOME_VIEW_TIME = 3.0  # seconds per short (no engagement, just observe)
+HOME_SESSIONS = 5
+HOME_SHORTS_PER_SESSION = 20
 
 # === BROWSER SETTINGS ===
 VIEWPORT_WIDTH = 800
