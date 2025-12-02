@@ -45,13 +45,10 @@ def classify_conflict_region(**kwargs: str | None) -> config.ConflictCountry | N
 
     result = response.text.strip().upper()
     
-    # Map response to ConflictCountry or None
-    conflict_map: dict[str, config.ConflictCountry] = {
-        "PALESTINE": "Palestine",
-        "MYANMAR": "Myanmar",
-        "UKRAINE": "Ukraine",
-        "MEXICO": "Mexico",
-    }
+    # Map uppercase response to ConflictCountry
+    for country in config.CONFLICT_KEYWORDS:
+        if country.upper() == result:
+            return country
     
-    return conflict_map.get(result, None)
+    return None
 
