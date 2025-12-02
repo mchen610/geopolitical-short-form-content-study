@@ -1,7 +1,6 @@
 import argparse
 import json
 import sys
-import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from pathlib import Path
@@ -207,6 +206,55 @@ def run_setup(account_id: str):
     return True
 
 
+def run_full_experiment(account_id: str):
+    """
+    Run the full experiment for an account:
+    - Goes through all 5 countries in the pre-assigned random order
+    - Runs SESSIONS_PER_COUNTRY sessions per country (5 * 15 = 75 shorts per country)
+    """
+    if account_id not in config.ACCOUNT_COUNTRY_ORDER:
+        print(f"❌ No country order defined for account: {account_id}")
+        print(f"   Available accounts: {config.ACCOUNTS}")
+        return False
+    
+    country_order = config.ACCOUNT_COUNTRY_ORDER[account_id]
+    
+    print("\n" + "=" * 60)
+    print(f"🔬 FULL EXPERIMENT - Account: {account_id}")
+    print(f"   Country order: {' → '.join(country_order)}")
+    print(f"   Sessions per country: {config.SESSIONS_PER_COUNTRY}")
+    print(f"   Shorts per session: {config.SHORTS_PER_SESSION}")
+    print(f"   Total shorts per country: {config.SESSIONS_PER_COUNTRY * config.SHORTS_PER_SESSION}")
+    print(f"   Total shorts overall: {len(country_order) * config.SESSIONS_PER_COUNTRY * config.SHORTS_PER_SESSION}")
+    print("=" * 60)
+    
+    for country_idx, country in enumerate(country_order, 1):
+        print(f"\n{'='*60}")
+        print(f"🌍 COUNTRY {country_idx}/{len(country_order)}: {country}")
+        print(f"{'='*60}")
+        
+        for session_num in range(1, config.SESSIONS_PER_COUNTRY + 1):
+            print(f"\n📺 Session {session_num}/{config.SESSIONS_PER_COUNTRY} for {country}")
+            success = run_capture_session(account_id, country)
+            
+            if not success:
+                print("⚠️  Session failed, continuing to next...")
+            
+            # Delay between sessions
+            if session_num < config.SESSIONS_PER_COUNTRY:
+                random_delay(2, 5)
+
+        # Delay between countries
+        if country_idx < len(country_order):
+            print("\n⏳ Switching to next country...")
+            random_delay(3, 6)
+    
+    print("\n" + "=" * 60)
+    print(f"🎉 EXPERIMENT COMPLETE for {account_id}")
+    print("=" * 60)
+    return True
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Capture YouTube Shorts feed and like conflict-related content",
@@ -216,28 +264,36 @@ def main():
     parser.add_argument("--account", "-a", help="Account ID from config.py")
     parser.add_argument("--setup", "-s", action="store_true", help="Setup: log into YouTube")
     parser.add_argument("--list-accounts", "-l", action="store_true", help="List accounts")
+    parser.add_argument("--run", "-r", action="store_true", help="Run full experiment for account")
     
     args = parser.parse_args()
     
     if args.list_accounts:
-        print("\nAccounts:")
+        print("\nAccounts and their country orders:")
         for acc_id in config.ACCOUNTS:
             profile_path = CHROME_PROFILES_DIR / acc_id
             status = "✅" if profile_path.exists() else "❌ needs --setup"
+            order = config.ACCOUNT_COUNTRY_ORDER[acc_id]
             print(f"  {acc_id}: {status}")
+            if order:
+                print(f"    Order: {' → '.join(order)}")
         return
     
     if not args.account:
-        args.account = list(config.ACCOUNTS)[1]
-        print(f"Using default account: {args.account}")
+        print("❌ Please specify an account with --account")
+        print("   Use --list-accounts to see available accounts")
+        sys.exit(1)
     
     if args.setup:
         success = run_setup(args.account)
         sys.exit(0 if success else 1)
     
-    for i in range(10):
-        run_capture_session(args.account, "Mexico")
-        random_delay(1, 2)
+    if args.run:
+        success = run_full_experiment(args.account)
+        sys.exit(0 if success else 1)
+    
+    # Default: show help
+    parser.print_help()
 
 
 if __name__ == "__main__":

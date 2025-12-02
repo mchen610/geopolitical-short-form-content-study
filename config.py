@@ -99,10 +99,7 @@ CONFLICT_URLS: dict[ConflictCountry, str] = {
 
 
 def build_prompt(*, conflict_region: ConflictCountry, **kwargs: str | None) -> str:
-    keywords = CONFLICT_KEYWORDS.get(conflict_region)
-    if not keywords:
-        raise ValueError(f"No keywords defined for conflict region: {conflict_region}")
-    
+    keywords = CONFLICT_KEYWORDS[conflict_region]
     keywords_list = "\n".join(f"- {kw}" for kw in keywords)
     details = "\n".join(f"{key.capitalize()}: {value}" for key, value in kwargs.items())
     
@@ -122,14 +119,22 @@ Respond with ONLY "YES" or "NO"."""
 # Each account gets a dedicated profile in ./chrome_profiles/
 # Run --setup to log in for the first time
 
-ACCOUNTS = set([
-    "test",
-    "profile_1",
-    "profile_2",
-    "profile_3",
-    "profile_4",
-    "profile_5",
-])
+
+# Random country order for each account (pre-generated)
+# Each account sees all 5 countries in a different random order
+ACCOUNT_COUNTRY_ORDER: dict[str, list[ConflictCountry]] = {
+    "test": ["Brazil", "Ukraine", "Palestine", "Mexico", "Myanmar"],
+    "profile_1": ["Brazil", "Ukraine", "Palestine", "Mexico", "Myanmar"],
+    "profile_2": ["Myanmar", "Mexico", "Brazil", "Ukraine", "Palestine"],
+    "profile_3": ["Ukraine", "Palestine", "Myanmar", "Brazil", "Mexico"],
+    "profile_4": ["Mexico", "Brazil", "Ukraine", "Myanmar", "Palestine"],
+    "profile_5": ["Palestine", "Myanmar", "Mexico", "Ukraine", "Brazil"],
+}
+
+ACCOUNTS = set(ACCOUNT_COUNTRY_ORDER.keys())
+
+# Number of sessions to run per country (5 sessions * 15 shorts = 75 shorts per country)
+SESSIONS_PER_COUNTRY = 5
 
 # === TIMING CONTROLS ===
 # All times in seconds
