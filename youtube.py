@@ -17,7 +17,7 @@ from selenium.common.exceptions import StaleElementReferenceException
 from seleniumwire.undetected_chromedriver import Chrome  # type: ignore[import-untyped]
 
 import config
-from llm import is_conflict_related
+from llm import is_conflict_related, classify_conflict_region
 from utils import random_delay
 
 SHORTS_PLAYER = "ytd-shorts, ytd-reel-video-renderer"
@@ -36,6 +36,19 @@ class ShortMetadata(TypedDict):
     channel: str | None
     transcript: str | None
     is_conflict_related: bool
+
+
+class HomeShortMetadata(TypedDict):
+    """Metadata for home feed shorts (Phase 2 measurement)."""
+    url: str
+    extracted_at: str
+    video_id: str
+    view_index: int
+
+    title: str | None
+    channel: str | None
+    transcript: str | None
+    related_country: config.ConflictCountry | None
 
 
 def wait_for_shorts_load(driver: Chrome, timeout: int = 30):
@@ -189,3 +202,48 @@ def swipe_to_next_short(driver: Chrome) -> bool:
     except Exception as e:
         print(f"   Swipe failed: {e}")
         return False
+
+
+def extract_home_short_metadata(driver: Chrome, view_index: int) -> HomeShortMetadata:
+    """
+    Extract metadata from home feed short and classify which conflict (if any).
+    No engagement - just observe and classify.
+    """
+    url = driver.current_url
+    print()
+    print(f"   Short {view_index} - {url}")
+
+    time.sleep(1)  # Brief wait for content to load
+    
+    title = get_text(driver, TITLE)
+    print(f"   Title: {title}")
+
+    video_id = url.split("/shorts/")[-1] if "/shorts/" in url else url
+    transcript_data = get_transcript_data(driver, video_id)
+    transcript = transcript_data["transcript"]
+    
+    if transcript:
+        print(f"   Transcript: {transcript[:70]}...({len(transcript.split(' '))} words)")
+    else:
+        print(f"   Transcript: {transcript}")
+
+    channel = get_text(driver, CHANNEL)
+    
+    # Classify which conflict this is about (multi-class)
+    related_country = classify_conflict_region(title=title, channel=channel, transcript=transcript)
+    
+    if related_country:
+        print(f"   🌍 Related to: {related_country}")
+    else:
+        print("   ⚪ No conflict detected")
+    
+    return {
+        "url": url,
+        "extracted_at": datetime.now(ZoneInfo('America/New_York')).isoformat(),
+        "title": title,
+        "channel": channel,
+        "video_id": video_id,
+        "view_index": view_index,
+        "related_country": related_country,
+        "transcript": transcript,
+    }

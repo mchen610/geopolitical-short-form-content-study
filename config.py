@@ -183,6 +183,33 @@ The video is RELATED if it covers any of these related to the conflict region {c
 
 Respond with ONLY "YES" or "NO"."""
 
+
+def build_classify_prompt(**kwargs: str | None) -> str:
+    """Build prompt for multi-class conflict classification."""
+    details = "\n".join(f"{key.capitalize()}: {value}" for key, value in kwargs.items())
+    
+    # Build keywords section for all conflicts
+    all_keywords = []
+    for country, keywords in CONFLICT_KEYWORDS.items():
+        kw_list = ", ".join(keywords)
+        all_keywords.append(f"- {country}: {kw_list}")
+    keywords_section = "\n".join(all_keywords)
+    
+    return f"""You are classifying which geopolitical conflict (if any) a YouTube Short is about.
+
+<video_details>
+{details}
+</video_details>
+
+<conflicts>
+{keywords_section}
+</conflicts>
+
+If this video is about one of these conflicts, respond with ONLY the country name (Palestine, Myanmar, Ukraine, Mexico, or Brazil).
+If this video is NOT about any of these conflicts, respond with ONLY "NONE".
+
+Your response must be exactly one of: PALESTINE, MYANMAR, UKRAINE, MEXICO, BRAZIL, or NONE."""
+
 # === ACCOUNT DEFINITIONS ===
 # Each account gets a dedicated profile in ./chrome_profiles/
 # Run --setup to log in for the first time
@@ -218,7 +245,13 @@ SCROLL_DELAY_MAX = 30.0
 
 # Number of Shorts to view per session
 # Each scroll = 1 Short viewed
-SHORTS_PER_SESSION = 15
+SHORTS_PER_SESSION = 20
+
+# === PHASE 2: HOME FEED MEASUREMENT ===
+# After training, we measure what YouTube shows in the general home feed
+HOME_SESSIONS = 10
+HOME_SHORTS_PER_SESSION = 50
+HOME_VIEW_TIME = 3.0  # seconds per short (no engagement, just observe)
 
 # === BROWSER SETTINGS ===
 VIEWPORT_WIDTH = 800
