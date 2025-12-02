@@ -123,6 +123,7 @@ Respond with ONLY "YES" or "NO"."""
 # Run --setup to log in for the first time
 
 ACCOUNTS = set([
+    "test",
     "profile_1",
     "profile_2",
     "profile_3",
@@ -145,9 +146,6 @@ SCROLL_DELAY_MAX = 30.0
 # Number of Shorts to view per session
 # Each scroll = 1 Short viewed
 SHORTS_PER_SESSION = 15
-
-# Total session time limit (seconds) - fail-safe
-MAX_SESSION_DURATION = 6000
 
 # === BROWSER SETTINGS ===
 VIEWPORT_WIDTH = 800

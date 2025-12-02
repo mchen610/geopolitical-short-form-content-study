@@ -85,15 +85,7 @@ def view_shorts(driver: uc.Chrome, count: int, account_id: str, session_id: str,
     Returns list of Short metadata.
     """
     shorts_data = []
-    start_time = time.time()
-    
     for i in range(count):
-        # Check session time limit
-        elapsed = time.time() - start_time
-        if elapsed > config.MAX_SESSION_DURATION:
-            print(f"⚠️  Session time limit reached ({config.MAX_SESSION_DURATION}s)")
-            break
-        
         if not driver.current_url:
             print("Browser closed, exiting...")
             break
