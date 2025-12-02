@@ -69,24 +69,42 @@ def get_text(driver: Chrome, selector: str) -> str | None:
                 continue
     return None
 
-def extract_transcript(data: dict) -> str | None:
-    """Extract joined transcript from timedtext endpoint response JSON."""
+class TranscriptData(TypedDict):
+    transcript: str | None
+    duration_seconds: float | None
+
+
+def extract_transcript_data(data: dict) -> TranscriptData:
+    """Extract transcript text and duration from timedtext endpoint response JSON."""
     texts = []
+    duration_ms: int | None = None
+    
     for event in data["events"]:
+        # Track the end time of the last event to get video duration
+        if "tStartMs" in event:
+            end_ms = event["tStartMs"] + event.get("dDurationMs", 0)
+            if duration_ms is None or end_ms > duration_ms:
+                duration_ms = end_ms
+        
         if "segs" not in event:
             continue
         text = " ".join(seg["utf8"].strip() for seg in event["segs"]).replace("  ", " ")
         texts.append(text)
+    
     transcript = " ".join(texts)
-    return transcript if transcript else None
+    return {
+        "transcript": transcript if transcript else None,
+        "duration_seconds": duration_ms / 1000 if duration_ms else None,
+    }
 
-def get_transcript(driver: Chrome, video_id: str) -> str | None:
+
+def get_transcript_data(driver: Chrome, video_id: str) -> TranscriptData:
     for req in driver.requests:
         if "timedtext" in req.url and video_id in req.url and req.response:
             body = req.response.body.decode("utf-8")
-            return extract_transcript(json.loads(body))
+            return extract_transcript_data(json.loads(body))
     # This means the video simply doesn't have a transcript       
-    return None
+    return {"transcript": None, "duration_seconds": None}
     
 
 
@@ -107,6 +125,18 @@ def click_like(driver: Chrome):
         print("   Like button not found or not clickable")
 
 
+def watch_entire_video(duration_seconds: float | None):
+    """Wait for the video to finish playing based on transcript duration."""
+    if duration_seconds is None:
+        print("   ⚠️ Could not get video duration, waiting 60s")
+        time.sleep(60)
+        return
+    
+    print(f"   ⏱️ Watching full video ({duration_seconds:.1f}s)...")
+    time.sleep(duration_seconds)
+    print(f"   ✅ Watched for {duration_seconds:.1f}s")
+
+
 def extract_short_metadata(driver: Chrome, view_index: int, conflict_region: config.ConflictCountry) -> ShortMetadata:
     """Extract metadata from the currently visible Short."""
     url = driver.current_url
@@ -120,9 +150,13 @@ def extract_short_metadata(driver: Chrome, view_index: int, conflict_region: con
 
 
     video_id = url.split("/shorts/")[-1]
-    transcript = get_transcript(driver, video_id)
+    transcript_data = get_transcript_data(driver, video_id)
+    transcript = transcript_data["transcript"]
+    duration_seconds = transcript_data["duration_seconds"]
+    
     if transcript:
         print(f"   Transcript: {transcript[:70]}...({len(transcript.split(' '))} words)")
+        print(f"   Duration: {duration_seconds}s")
     else:
         print(f"   Transcript: {transcript}")
 
@@ -131,6 +165,7 @@ def extract_short_metadata(driver: Chrome, view_index: int, conflict_region: con
     if is_related:
         click_like(driver)
         print("   ❤️ Liked!")
+        watch_entire_video(duration_seconds)
     else:
         print("   ❌ Ignored")
     
