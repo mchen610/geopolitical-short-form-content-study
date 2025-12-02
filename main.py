@@ -72,7 +72,7 @@ def create_driver(account_id: str, setup_mode: bool = False):
     driver = uc.Chrome(
         options=options,
         seleniumwire_options=seleniumwire_options,
-        version_main=None,
+        version_main=142,  # Match your Chrome browser version
         window_height=config.VIEWPORT_HEIGHT,
         window_width=config.VIEWPORT_WIDTH,
     )
