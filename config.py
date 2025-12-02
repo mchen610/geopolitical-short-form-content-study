@@ -88,13 +88,81 @@ CONFLICT_KEYWORDS: dict[ConflictCountry, list[str]] = {
     ]
 }
 
-CONFLICT_URLS: dict[ConflictCountry, str] = {
-    "Palestine": "https://www.youtube.com/shorts/748bcs7b_Zk",
-    "Myanmar": "https://www.youtube.com/shorts/Ero5GvpR4ng",
-    "Ukraine": "https://www.youtube.com/shorts/hb1YZBBGeGY",
-    "Mexico": "https://www.youtube.com/shorts/VDhVJhSg1LA",
-    "Brazil": "https://www.youtube.com/shorts/9kRqoe4-l8U",
-
+CONFLICT_URLS: dict[ConflictCountry, list[str]] = {
+    "Palestine": [
+        "https://www.youtube.com/shorts/N0wEdL-zqII",
+        "https://www.youtube.com/shorts/UA-JQgGO8M8",
+        "https://www.youtube.com/shorts/nZOyQROIh3A",
+        "https://www.youtube.com/shorts/Bhj_06yu2Gw",
+        "https://www.youtube.com/shorts/peBHAQNk7p4",
+        "https://www.youtube.com/shorts/3VYfJMZgV3o",
+        "https://www.youtube.com/shorts/Fn9vUh-yHsY",
+        "https://www.youtube.com/shorts/VnKNiHm6lA0",
+        "https://www.youtube.com/shorts/PEENUVaoWF8",
+        "https://www.youtube.com/shorts/5MZv4TrjFr8"
+    ],
+    "Myanmar": [
+        "https://www.youtube.com/shorts/rF2WN41oXHw",
+        "https://www.youtube.com/shorts/ZdaLsOdoMTY",
+        "https://www.youtube.com/shorts/9Hrff1T8o2U",
+        "https://www.youtube.com/shorts/vl-sUJKpzLU",
+        "https://www.youtube.com/shorts/37iWZl4r3xs",
+        "https://www.youtube.com/shorts/AIyDCIGRiQ4",
+        "https://www.youtube.com/shorts/N1YBMHUTA-s",
+        "https://www.youtube.com/shorts/h2RRJjrsXfQ",
+        "https://www.youtube.com/shorts/MYZHYvtBZ7M"
+    ],
+    "Ukraine": [
+        "https://www.youtube.com/shorts/gmQ5T1xCdtM",
+        "https://www.youtube.com/shorts/cSWy6m7fFa4",
+        "https://www.youtube.com/shorts/ifcfeyjNm7U",
+        "https://www.youtube.com/shorts/ooEzgr2H4UA",
+        "https://www.youtube.com/shorts/RSXcoY_uORY",
+        "https://www.youtube.com/shorts/wHExn_r6FaA",
+        "https://www.youtube.com/shorts/tx2TA-9Hlh0",
+        "https://www.youtube.com/shorts/EiEnImaMKVY",
+        "https://www.youtube.com/shorts/gxYrAKfcU2g",
+        "https://www.youtube.com/shorts/Lo4a7BKnwbM"
+    ],
+    "Mexico": [
+        "https://www.youtube.com/shorts/VDhVJhSg1LA",
+        "https://www.youtube.com/shorts/P-PySJSsUXQ",
+        "https://www.youtube.com/shorts/QNYoxdVFnmI",
+        "https://www.youtube.com/shorts/0BHWu8CzwEk",
+        "https://www.youtube.com/shorts/hGOQbnt9r_o",
+        "https://www.youtube.com/shorts/mUzIhnQEW90",
+        "https://www.youtube.com/shorts/WzWhYgDFsJs",
+        "https://www.youtube.com/shorts/oOxdW3MUKMI",
+        "https://www.youtube.com/shorts/y-NZRWmhMkg"
+    ],
+    "Brazil": [
+        "https://www.youtube.com/shorts/r4RRtBWMCXA",
+        "https://www.youtube.com/shorts/r4RRtBWMCXA",
+        "https://www.youtube.com/shorts/r4RRtBWMCXA",
+        "https://www.youtube.com/shorts/PAqvULOfze8",
+        "https://www.youtube.com/shorts/PAqvULOfze8",
+        "https://www.youtube.com/shorts/PAqvULOfze8",
+        "https://www.youtube.com/shorts/YJydcu2qp_8",
+        "https://www.youtube.com/shorts/YJydcu2qp_8",
+        "https://www.youtube.com/shorts/YJydcu2qp_8",
+        "https://www.youtube.com/shorts/9kRqoe4-l8U",
+        "https://www.youtube.com/shorts/9kRqoe4-l8U",
+        "https://www.youtube.com/shorts/9kRqoe4-l8U",
+        "https://www.youtube.com/shorts/ljB_2HESmHs",
+        "https://www.youtube.com/shorts/Z5_K9FJrGrQ",
+        "https://www.youtube.com/shorts/Z5_K9FJrGrQ",
+        "https://www.youtube.com/shorts/Z5_K9FJrGrQ",
+        "https://www.youtube.com/shorts/R-yxoWiDz8w",
+        "https://www.youtube.com/shorts/RBwtXgs-NGE",
+        "https://www.youtube.com/shorts/RBwtXgs-NGE",
+        "https://www.youtube.com/shorts/RBwtXgs-NGE",
+        "https://www.youtube.com/shorts/6ZIA5G78FuU",
+        "https://www.youtube.com/shorts/6ZIA5G78FuU",
+        "https://www.youtube.com/shorts/6ZIA5G78FuU",
+        "https://www.youtube.com/shorts/gjKrsAprFYk",
+        "https://www.youtube.com/shorts/gjKrsAprFYk",
+        "https://www.youtube.com/shorts/gjKrsAprFYk"
+    ],
 }
 
 

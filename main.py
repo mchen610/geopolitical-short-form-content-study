@@ -120,6 +120,22 @@ def save_session(account_id: str, region: str, session_id: str, shorts_data: lis
         json.dump(shorts_data, f, indent=2, ensure_ascii=False)
 
 
+def get_session_count_for_country(account_id: str, conflict_region: config.ConflictCountry) -> int:
+    """Count how many sessions have already been run for this account+country."""
+    pattern = f"{account_id}_{conflict_region}_*.json"
+    existing_files = list(config.OUTPUT_DIR.glob(pattern))
+    return len(existing_files)
+
+
+def get_next_url_for_country(account_id: str, conflict_region: config.ConflictCountry) -> str:
+    """Get the next URL to use for this account+country based on session count."""
+    urls = config.CONFLICT_URLS[conflict_region]
+    session_count = get_session_count_for_country(account_id, conflict_region)
+    # Use modulo to wrap around if we've done more sessions than URLs
+    url_index = session_count % len(urls)
+    return urls[url_index]
+
+
 def run_capture_session(account_id: str, conflict_region: config.ConflictCountry):
     """
     Run a single Shorts capture session for the given account.
@@ -141,13 +157,18 @@ def run_capture_session(account_id: str, conflict_region: config.ConflictCountry
     success = False
     driver = create_driver(account_id)
 
+    # Get the next URL in sequence for this account+country
+    start_url = get_next_url_for_country(account_id, conflict_region)
+    session_count = get_session_count_for_country(account_id, conflict_region)
+    print(f"   Session #{session_count + 1} for {conflict_region}")
+    print(f"   Starting URL: {start_url}")
 
     try:
         # Setup
         setup_directories()
         
         print("Loading YouTube Shorts...")
-        driver.get(config.CONFLICT_URLS[conflict_region])
+        driver.get(start_url)
         
         # Wait for page with human-like delay
         random_delay(config.PAGE_LOAD_WAIT_MIN, config.PAGE_LOAD_WAIT_MAX)
