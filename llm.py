@@ -45,7 +45,6 @@ def classify_conflict_region(**kwargs: str | None) -> config.ConflictCountry | N
 
     result = response.text.strip().upper()
     
-    # Map uppercase response to ConflictCountry
     for country in config.CONFLICT_KEYWORDS:
         if country.upper() == result:
             return country

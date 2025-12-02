@@ -12,11 +12,11 @@ from youtube import (
 )
 
 
-def load_and_extract_single_short(driver: uc.Chrome, url: str, index: int, conflict_region: config.ConflictCountry) -> ShortMetadata:
+def load_and_extract_single_short(driver: uc.Chrome, url: str, conflict_region: config.ConflictCountry) -> ShortMetadata:
     """Load a Short URL and extract its metadata."""
     driver.get(url)
     wait_for_shorts_load(driver)
-    metadata = extract_short_metadata(driver, index, conflict_region, test_mode=True)
+    metadata = extract_short_metadata(driver, conflict_region, test_mode=True)
     clear_requests(driver)
     return metadata
 
@@ -59,7 +59,7 @@ def run_test_links(create_driver_fn, setup_directories_fn, conflict_region: conf
                 print(f"\n📹 [{url_num}/{total_urls}] {country} URL {i}/{len(urls)}: {url}")
                 
                 try:
-                    metadata = load_and_extract_single_short(driver, url, i, country)
+                    metadata = load_and_extract_single_short(driver, url, country)
                     
                     status = "✅ RELATED" if metadata["is_conflict_related"] else "❌ NOT RELATED"
                     print(f"   {status}")

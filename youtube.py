@@ -30,7 +30,6 @@ class ShortMetadata(TypedDict):
     url: str
     extracted_at: str
     video_id: str
-    view_index: int
 
     title: str | None
     channel: str | None
@@ -44,7 +43,6 @@ class HomeShortMetadata(TypedDict):
     url: str
     extracted_at: str
     video_id: str
-    view_index: int
 
     title: str | None
     channel: str | None
@@ -153,11 +151,11 @@ def watch_entire_video(duration_seconds: float | None):
     print(f"   ✅ Watched for {min(duration_seconds, max_duration):.1f}s (maxed out at {max_duration}s)")
 
 
-def extract_short_metadata(driver: Chrome, view_index: int, conflict_region: config.ConflictCountry, test_mode: bool = False) -> ShortMetadata:
+def extract_short_metadata(driver: Chrome, conflict_region: config.ConflictCountry, test_mode: bool = False) -> ShortMetadata:
     """Extract metadata from the currently visible Short."""
     url = driver.current_url
     print()
-    print(f"   Short {view_index} - {url}")
+    print(f"   {url}")
 
     random_delay(2, 4) # wait for the short to load
     
@@ -192,7 +190,6 @@ def extract_short_metadata(driver: Chrome, view_index: int, conflict_region: con
         "title": title,
         "channel": channel,
         "video_id": video_id,
-        "view_index": view_index,
         "is_conflict_related": is_related,
         "transcript": transcript,
         "duration_seconds": duration_seconds,
@@ -208,14 +205,14 @@ def swipe_to_next_short(driver: Chrome) -> bool:
         return False
 
 
-def extract_home_short_metadata(driver: Chrome, view_index: int) -> HomeShortMetadata:
+def extract_home_short_metadata(driver: Chrome) -> HomeShortMetadata:
     """
     Extract metadata from home feed short and classify which conflict (if any).
     No engagement - just observe and classify.
     """
     url = driver.current_url
     print()
-    print(f"   Short {view_index} - {url}")
+    print(f"   {url}")
 
     time.sleep(1)  # Brief wait for content to load
     
@@ -248,7 +245,6 @@ def extract_home_short_metadata(driver: Chrome, view_index: int) -> HomeShortMet
         "title": title,
         "channel": channel,
         "video_id": video_id,
-        "view_index": view_index,
         "related_country": related_country,
         "transcript": transcript,
         "duration_seconds": duration_seconds,

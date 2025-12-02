@@ -47,7 +47,7 @@ def view_home_shorts(driver: uc.Chrome, count: int, account_id: str, session_id:
             break
         
         # Extract metadata and classify conflict
-        metadata = extract_home_short_metadata(driver, i + 1)
+        metadata = extract_home_short_metadata(driver)
         shorts_data.append(metadata)
         
         # Save after every short

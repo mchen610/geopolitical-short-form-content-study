@@ -55,7 +55,7 @@ def view_shorts(driver: uc.Chrome, count: int, account_id: str, session_id: str,
             break
         
         # Extract full metadata
-        metadata = extract_short_metadata(driver, i + 1, conflict_region)
+        metadata = extract_short_metadata(driver, conflict_region)
         shorts_data.append(metadata)
         
         # Save after every short
