@@ -35,6 +35,7 @@ class ShortMetadata(TypedDict):
     title: str | None
     channel: str | None
     transcript: str | None
+    duration_seconds: float | None
     is_conflict_related: bool
 
 
@@ -48,6 +49,7 @@ class HomeShortMetadata(TypedDict):
     title: str | None
     channel: str | None
     transcript: str | None
+    duration_seconds: float | None
     related_country: config.ConflictCountry | None
 
 
@@ -192,6 +194,7 @@ def extract_short_metadata(driver: Chrome, view_index: int, conflict_region: con
         "view_index": view_index,
         "is_conflict_related": is_related,
         "transcript": transcript,
+        "duration_seconds": duration_seconds,
     }
 
 
@@ -221,6 +224,7 @@ def extract_home_short_metadata(driver: Chrome, view_index: int) -> HomeShortMet
     video_id = url.split("/shorts/")[-1] if "/shorts/" in url else url
     transcript_data = get_transcript_data(driver, video_id)
     transcript = transcript_data["transcript"]
+    duration_seconds = transcript_data["duration_seconds"]
     
     if transcript:
         print(f"   Transcript: {transcript[:70]}...({len(transcript.split(' '))} words)")
@@ -246,4 +250,5 @@ def extract_home_short_metadata(driver: Chrome, view_index: int) -> HomeShortMet
         "view_index": view_index,
         "related_country": related_country,
         "transcript": transcript,
+        "duration_seconds": duration_seconds,
     }
