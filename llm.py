@@ -51,7 +51,6 @@ def classify_conflict_region(**kwargs: str | None) -> config.ConflictCountry | N
         "MYANMAR": "Myanmar",
         "UKRAINE": "Ukraine",
         "MEXICO": "Mexico",
-        "BRAZIL": "Brazil",
     }
     
     return conflict_map.get(result, None)

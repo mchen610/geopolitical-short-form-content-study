@@ -8,8 +8,8 @@ from typing import Literal
 # Set your Google API key in environment variable GOOGLE_API_KEY
 GEMINI_MODEL = "gemini-2.0-flash"  # Fast and cheap
 
-# Type for the 5 conflict countries we study
-ConflictCountry = Literal["Palestine", "Myanmar", "Ukraine", "Mexico", "Brazil"]
+# Type for the 4 conflict countries we study
+ConflictCountry = Literal["Palestine", "Myanmar", "Ukraine", "Mexico"]
 
 # Conflict severity scores (ACLED Conflict Index, December 2024)
 CONFLICT_SCORE_MAP: dict[ConflictCountry, float] = {
@@ -17,7 +17,6 @@ CONFLICT_SCORE_MAP: dict[ConflictCountry, float] = {
     "Myanmar": 1.9,      # Rank 2, Extreme
     "Ukraine": 1.543,    # Rank 14, High
     "Mexico": 1.045,     # Rank 4, Extreme
-    "Brazil": 0.785,     # Rank 6, Extreme
 }
 
 # Conflict region -> search keywords for identifying related content
@@ -73,19 +72,6 @@ CONFLICT_KEYWORDS: dict[ConflictCountry, list[str]] = {
         "military vs cartel firefight",
         "culiacanazo operation"
     ],
-
-    "Brazil": [
-        "pcc prison uprising",
-        "rio favela police raid",
-        "complexo do alemao operation",
-        "milicia territory dispute",
-        "amazon illegal mining gangs",
-        "yanomami land invasion",
-        "para rural land conflict",
-        "comando vermelho shootout",
-        "pcc retaliation sao paulo",
-        "amazon defenders attacked"
-    ]
 }
 
 CONFLICT_URLS: dict[ConflictCountry, list[str]] = {
@@ -137,18 +123,6 @@ CONFLICT_URLS: dict[ConflictCountry, list[str]] = {
         "https://www.youtube.com/shorts/y-NZRWmhMkg",
         "https://www.youtube.com/shorts/QyL-89u2FGs",
     ],
-    "Brazil": [
-        "https://www.youtube.com/shorts/r4RRtBWMCXA",
-        "https://www.youtube.com/shorts/PAqvULOfze8",
-        "https://www.youtube.com/shorts/YJydcu2qp_8",
-        "https://www.youtube.com/shorts/9kRqoe4-l8U",
-        "https://www.youtube.com/shorts/ljB_2HESmHs",
-        "https://www.youtube.com/shorts/Z5_K9FJrGrQ",
-        "https://www.youtube.com/shorts/R-yxoWiDz8w",
-        "https://www.youtube.com/shorts/RBwtXgs-NGE",
-        "https://www.youtube.com/shorts/6ZIA5G78FuU",
-        "https://www.youtube.com/shorts/gjKrsAprFYk"
-    ],
 }
 
 
@@ -191,10 +165,10 @@ def build_classify_prompt(**kwargs: str | None) -> str:
 {keywords_section}
 </conflicts>
 
-If this video is about one of these conflicts, respond with ONLY the country name (Palestine, Myanmar, Ukraine, Mexico, or Brazil).
+If this video is about one of these conflicts, respond with ONLY the country name (Palestine, Myanmar, Ukraine, or Mexico).
 If this video is NOT about any of these conflicts, respond with ONLY "NONE".
 
-Your response must be exactly one of: PALESTINE, MYANMAR, UKRAINE, MEXICO, BRAZIL, or NONE."""
+Your response must be exactly one of: PALESTINE, MYANMAR, UKRAINE, MEXICO, or NONE."""
 
 # === ACCOUNT DEFINITIONS ===
 # Each account gets a dedicated profile in ./chrome_profiles/
@@ -204,12 +178,11 @@ Your response must be exactly one of: PALESTINE, MYANMAR, UKRAINE, MEXICO, BRAZI
 # Balanced Latin Square: each country appears exactly once at each position
 # This eliminates order effects as a confounding variable
 ACCOUNT_COUNTRY_ORDER: dict[str, list[ConflictCountry]] = {
-    "test": ["Palestine", "Myanmar", "Ukraine", "Mexico", "Brazil"],
-    "profile_1": ["Palestine", "Myanmar", "Ukraine", "Mexico", "Brazil"],
-    "profile_2": ["Myanmar", "Ukraine", "Mexico", "Brazil", "Palestine"],
-    "profile_3": ["Ukraine", "Mexico", "Brazil", "Palestine", "Myanmar"],
-    "profile_4": ["Mexico", "Brazil", "Palestine", "Myanmar", "Ukraine"],
-    "profile_5": ["Brazil", "Palestine", "Myanmar", "Ukraine", "Mexico"],
+    "test": ["Palestine", "Myanmar", "Ukraine", "Mexico"],
+    "profile_1": ["Palestine", "Myanmar", "Ukraine", "Mexico"],
+    "profile_2": ["Myanmar", "Ukraine", "Mexico", "Palestine"],
+    "profile_3": ["Ukraine", "Mexico", "Palestine", "Myanmar"],
+    "profile_4": ["Mexico", "Palestine", "Myanmar", "Ukraine"],
 }
 
 ACCOUNTS = set(ACCOUNT_COUNTRY_ORDER.keys())
