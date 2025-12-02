@@ -141,15 +141,16 @@ def click_like(driver: Chrome):
 
 
 def watch_entire_video(duration_seconds: float | None):
-    """Wait for the video to finish playing based on transcript duration."""
+    # For consistency, max it out
+    max_duration = 45
     if duration_seconds is None:
-        print("   ⚠️ Could not get video duration, waiting 60s")
-        time.sleep(60)
+        print(f"   ⚠️ Could not get video duration, waiting {max_duration}s")
+        time.sleep(max_duration)
         return
     
     print(f"   ⏱️ Watching full video ({duration_seconds:.1f}s)...")
-    time.sleep(duration_seconds)
-    print(f"   ✅ Watched for {duration_seconds:.1f}s")
+    time.sleep(min(duration_seconds, max_duration))
+    print(f"   ✅ Watched for {min(duration_seconds, max_duration):.1f}s (maxed out at {max_duration}s)")
 
 
 def extract_short_metadata(driver: Chrome, view_index: int, conflict_region: config.ConflictCountry, test_mode: bool = False) -> ShortMetadata:
