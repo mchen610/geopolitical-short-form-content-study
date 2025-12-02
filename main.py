@@ -2,7 +2,7 @@
 Main entry point for YouTube Shorts geopolitical conflict study.
 """
 import argparse
-import sys
+from datetime import datetime
 
 import config
 from driver import CHROME_PROFILES_DIR, create_driver, setup_directories, run_setup
@@ -40,37 +40,33 @@ def main():
     if args.test:
         if args.test == "ALL":
             # Test all countries
-            success = run_test_links(create_driver, setup_directories, None)
+            run_test_links(create_driver, setup_directories, None)
         else:
             # Validate country
             valid_countries = list(config.CONFLICT_URLS.keys())
             if args.test not in valid_countries:
                 print(f"❌ Unknown country: {args.test}")
                 print(f"   Valid countries: {valid_countries}")
-                sys.exit(1)
-            success = run_test_links(create_driver, setup_directories, args.test)
-        sys.exit(0 if success else 1)
+            run_test_links(create_driver, setup_directories, args.test)
     
     if not args.account:
         print("❌ Please specify an account with --account")
         print("   Use --list-accounts to see available accounts")
-        sys.exit(1)
     
     if args.setup:
-        success = run_setup(args.account)
-        sys.exit(0 if success else 1)
+        run_setup(args.account)
     
     if args.run:
-        success = run_full_experiment(args.account)
-        sys.exit(0 if success else 1)
+        run_full_experiment(args.account)
     
     if args.home:
-        success = run_home_feed(args.account)
-        sys.exit(0 if success else 1)
+        run_home_feed(args.account)
     
     # Default: show help
     parser.print_help()
 
 
 if __name__ == "__main__":
+    print("Starting main.py", datetime.now().strftime("%Y-%m-%d_%I:%M:%S%p"))
     main()
+    print("Ending main.py", datetime.now().strftime("%Y-%m-%d_%I:%M:%S%p"))
