@@ -127,27 +127,31 @@ def clear_requests(driver: Chrome):
 
 def click_like(driver: Chrome):
     """Click the like button if not already liked."""
-    try:
-        btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, LIKE_BUTTON))
-        )
-        if btn.get_attribute("aria-pressed") == "true":
+    for _ in range(5):
+        try:
+            btn = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, LIKE_BUTTON))
+            )
+            if btn.get_attribute("aria-pressed") == "true":
+                print("   Already liked")
+                return
+            ActionChains(driver).move_to_element(btn).click(btn).perform()
+            print("   Successfully liked")
             return
-        ActionChains(driver).move_to_element(btn).click(btn).perform()
-    except Exception:
-        print("   Like button not found or not clickable")
+        except Exception:
+            print("   Like button not found or not clickable")
 
 
 def watch_entire_video(duration_seconds: float | None):
     # For consistency, max it out
-    max_duration = 45
+    max_duration = 30
     if duration_seconds is None:
         print(f"   ⚠️ Could not get video duration, waiting {max_duration}s")
-        time.sleep(max_duration)
+        time.sleep(max_duration - 2)
         return
     
     print(f"   ⏱️ Watching full video ({duration_seconds:.1f}s)...")
-    time.sleep(min(duration_seconds, max_duration))
+    time.sleep(min(duration_seconds, max_duration) - 2)
     print(f"   ✅ Watched for {min(duration_seconds, max_duration):.1f}s (maxed out at {max_duration}s)")
 
 
@@ -178,7 +182,6 @@ def extract_short_metadata(driver: Chrome, conflict_region: config.ConflictCount
     is_related = is_conflict_related(conflict_region=conflict_region, title=title, channel=channel, transcript=transcript)
     if is_related:
         click_like(driver)
-        print("   ❤️ Liked!")
         if not test_mode:
             watch_entire_video(duration_seconds)
     else:
