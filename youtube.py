@@ -23,7 +23,7 @@ from utils import random_delay
 SHORTS_PLAYER = "ytd-shorts, ytd-reel-video-renderer"
 TITLE = "h2.ytShortsVideoTitleViewModelShortsVideoTitle"
 CHANNEL = ".ytReelChannelBarViewModelChannelName a"
-LIKE_BUTTON = 'button[aria-label*="like this video"]'
+LIKE_BUTTON = 'button[aria-label^="like this video"]'
 
 
 class ShortMetadata(TypedDict):
@@ -43,6 +43,16 @@ def wait_for_shorts_load(driver: Chrome, timeout: int = 30):
         EC.presence_of_element_located((By.CSS_SELECTOR, SHORTS_PLAYER))
     )
     random_delay(2, 3)
+    click_play(driver)
+
+
+def click_play(driver: Chrome):
+    """Click the large play button to start playback."""
+    try:
+        play_btn = driver.find_element(By.CSS_SELECTOR, ".ytp-large-play-button")
+        play_btn.click()
+    except Exception:
+        print("   Play button not found or not clickable")
 
 
 def get_text(driver: Chrome, selector: str) -> str | None:
