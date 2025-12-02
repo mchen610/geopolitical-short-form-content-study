@@ -188,15 +188,15 @@ Respond with ONLY "YES" or "NO"."""
 # Run --setup to log in for the first time
 
 
-# Random country order for each account (pre-generated)
-# Each account sees all 5 countries in a different random order
+# Balanced Latin Square: each country appears exactly once at each position
+# This eliminates order effects as a confounding variable
 ACCOUNT_COUNTRY_ORDER: dict[str, list[ConflictCountry]] = {
-    "test": ["Brazil", "Ukraine", "Palestine", "Mexico", "Myanmar"],
-    "profile_1": ["Brazil", "Ukraine", "Palestine", "Mexico", "Myanmar"],
-    "profile_2": ["Myanmar", "Mexico", "Brazil", "Ukraine", "Palestine"],
-    "profile_3": ["Ukraine", "Palestine", "Myanmar", "Brazil", "Mexico"],
-    "profile_4": ["Mexico", "Brazil", "Ukraine", "Myanmar", "Palestine"],
-    "profile_5": ["Palestine", "Myanmar", "Mexico", "Ukraine", "Brazil"],
+    "test": ["Palestine", "Myanmar", "Ukraine", "Mexico", "Brazil"],
+    "profile_1": ["Palestine", "Myanmar", "Ukraine", "Mexico", "Brazil"],
+    "profile_2": ["Myanmar", "Ukraine", "Mexico", "Brazil", "Palestine"],
+    "profile_3": ["Ukraine", "Mexico", "Brazil", "Palestine", "Myanmar"],
+    "profile_4": ["Mexico", "Brazil", "Palestine", "Myanmar", "Ukraine"],
+    "profile_5": ["Brazil", "Palestine", "Myanmar", "Ukraine", "Mexico"],
 }
 
 ACCOUNTS = set(ACCOUNT_COUNTRY_ORDER.keys())
