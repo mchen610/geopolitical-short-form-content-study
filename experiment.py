@@ -26,11 +26,60 @@ def save_session(account_id: str, region: str, session_id: str, shorts_data: lis
         json.dump(shorts_data, f, indent=2, ensure_ascii=False)
 
 
-def get_session_count_for_country(account_id: str, conflict_region: config.ConflictCountry) -> int:
-    """Count how many sessions have already been run for this account+country."""
+def get_session_files_for_country(account_id: str, conflict_region: config.ConflictCountry) -> list:
+    """Get all session files for account+country, sorted by name (timestamp)."""
     pattern = f"{account_id}_{conflict_region}_*.json"
-    existing_files = list(config.OUTPUT_DIR.glob(pattern))
-    return len(existing_files)
+    files = list(config.OUTPUT_DIR.glob(pattern))
+    return sorted(files)
+
+
+def is_session_complete(session_file) -> bool:
+    """Check if a session file has SHORTS_PER_SESSION shorts."""
+    with open(session_file) as f:
+        data = json.load(f)
+    return len(data) >= config.SHORTS_PER_SESSION
+
+
+def get_session_count_for_country(account_id: str, conflict_region: config.ConflictCountry) -> int:
+    """Count how many COMPLETE sessions have been run for this account+country."""
+    files = get_session_files_for_country(account_id, conflict_region)
+    return sum(1 for f in files if is_session_complete(f))
+
+
+def get_incomplete_session(account_id: str, conflict_region: config.ConflictCountry) -> tuple | None:
+    """Get the most recent incomplete session (file_path, existing_data, session_id), if any."""
+    files = get_session_files_for_country(account_id, conflict_region)
+    if not files:
+        return None
+    
+    last_file = files[-1]
+    with open(last_file) as f:
+        data = json.load(f)
+    
+    if len(data) < config.SHORTS_PER_SESSION:
+        # Extract session_id from filename: {account}_{region}_{session_id}.json
+        session_id = last_file.stem.replace(f"{account_id}_{conflict_region}_", "")
+        return (last_file, data, session_id)
+    return None
+
+
+def print_progress(account_id: str):
+    """Print current progress for an account."""
+    if account_id not in config.ACCOUNT_COUNTRY_ORDER:
+        return
+    
+    country_order = config.ACCOUNT_COUNTRY_ORDER[account_id]
+    print("\n📊 Current Progress:")
+    
+    for country in country_order:
+        complete = get_session_count_for_country(account_id, country)
+        incomplete = get_incomplete_session(account_id, country)
+        incomplete_str = ""
+        if incomplete:
+            _, data, _ = incomplete
+            incomplete_str = f" + {len(data)}/{config.SHORTS_PER_SESSION} in progress"
+        print(f"   {country}: {complete}/{config.SESSIONS_PER_COUNTRY} sessions{incomplete_str}")
+    print()
 
 
 def get_next_url_for_country(account_id: str, conflict_region: config.ConflictCountry) -> str:
@@ -42,14 +91,24 @@ def get_next_url_for_country(account_id: str, conflict_region: config.ConflictCo
     return urls[url_index]
 
 
-def view_shorts(driver: uc.Chrome, count: int, account_id: str, session_id: str, conflict_region: config.ConflictCountry) -> list[ShortMetadata]:
+def view_shorts(
+    driver: uc.Chrome,
+    count: int,
+    account_id: str,
+    session_id: str,
+    conflict_region: config.ConflictCountry,
+    existing_data: list[ShortMetadata] | None = None
+) -> list[ShortMetadata]:
     """
     View multiple Shorts, capturing metadata for each.
     Saves after every short processed.
+    Can resume from existing_data if provided.
     Returns list of Short metadata.
     """
-    shorts_data: list[ShortMetadata] = []
-    for i in range(count):
+    shorts_data: list[ShortMetadata] = existing_data if existing_data else []
+    start_idx = len(shorts_data)
+    
+    for i in range(start_idx, count):
         if not driver.current_url:
             print("Browser closed, exiting...")
             break
@@ -75,6 +134,7 @@ def view_shorts(driver: uc.Chrome, count: int, account_id: str, session_id: str,
 def run_capture_session(account_id: str, conflict_region: config.ConflictCountry) -> bool:
     """
     Run a single Shorts capture session for the given account.
+    Will resume an incomplete session if one exists.
     """
     print("\n" + "=" * 60)
     print(f"🎬 YouTube Shorts Capture - Account: {account_id}")
@@ -86,9 +146,17 @@ def run_capture_session(account_id: str, conflict_region: config.ConflictCountry
         print(f"   Available accounts: {config.ACCOUNTS}")
         return False
     
-    # Generate session ID in Eastern time with AM/PM
-    eastern = ZoneInfo('America/New_York')
-    session_id = datetime.now(eastern).strftime("%Y-%m-%d_%I:%M:%S%p")
+    # Check for incomplete session to resume
+    incomplete = get_incomplete_session(account_id, conflict_region)
+    existing_data: list[ShortMetadata] | None = None
+    
+    if incomplete:
+        _, existing_data, session_id = incomplete
+        print(f"   ⏯️  Resuming incomplete session: {len(existing_data)}/{config.SHORTS_PER_SESSION} shorts done")
+    else:
+        # Generate new session ID in Eastern time with AM/PM
+        eastern = ZoneInfo('America/New_York')
+        session_id = datetime.now(eastern).strftime("%Y-%m-%d_%I:%M:%S%p")
     
     success = False
     driver = create_driver(account_id)
@@ -108,9 +176,17 @@ def run_capture_session(account_id: str, conflict_region: config.ConflictCountry
         wait_for_shorts_load(driver)
         print("✅ Shorts loaded!")
         
+        # Skip ahead if resuming
+        if existing_data:
+            print(f"   ⏭️  Skipping {len(existing_data)} already-captured shorts...")
+            for _ in range(len(existing_data)):
+                swipe_to_next_short(driver)
+                random_delay(0.3, 0.5)
+        
         # View Shorts (saves after each one)
-        print(f"\n🎬 Viewing Shorts ({config.SHORTS_PER_SESSION} videos)...")
-        shorts_data = view_shorts(driver, config.SHORTS_PER_SESSION, account_id, session_id, conflict_region)
+        remaining = config.SHORTS_PER_SESSION - (len(existing_data) if existing_data else 0)
+        print(f"\n🎬 Viewing Shorts ({remaining} remaining)...")
+        shorts_data = view_shorts(driver, config.SHORTS_PER_SESSION, account_id, session_id, conflict_region, existing_data)
         
         num_related = sum(1 for s in shorts_data if s["is_conflict_related"])
         print("\n" + "=" * 60)
@@ -139,6 +215,7 @@ def run_full_experiment(account_id: str) -> bool:
     - Each round cycles through all countries in the pre-assigned order
     - Runs SESSIONS_PER_COUNTRY rounds total
     - This controls for temporal confounds (all countries get early + late sessions)
+    - Automatically resumes from where it left off
     """
     if account_id not in config.ACCOUNT_COUNTRY_ORDER:
         print(f"❌ No country order defined for account: {account_id}")
@@ -158,26 +235,42 @@ def run_full_experiment(account_id: str) -> bool:
     print(f"   Total shorts overall: {total_sessions * config.SHORTS_PER_SESSION}")
     print("=" * 60)
     
+    # Show current progress
+    print_progress(account_id)
+    
     session_counter = 0
+    skipped = 0
+    
     for round_num in range(1, config.SESSIONS_PER_COUNTRY + 1):
-        print(f"\n{'='*60}")
-        print(f"🔄 ROUND {round_num}/{config.SESSIONS_PER_COUNTRY}")
-        print(f"{'='*60}")
+        round_has_work = False
         
         for country_idx, country in enumerate(country_order):
             session_counter += 1
-            country_session = get_session_count_for_country(account_id, country) + 1
+            complete_sessions = get_session_count_for_country(account_id, country)
+            has_incomplete = get_incomplete_session(account_id, country) is not None
             
-            print(f"\n📺 Session {session_counter}/{total_sessions} | {country} (#{country_session})")
+            # Skip if this country already has enough complete sessions for this round
+            # (round_num is 1-indexed, so round 1 needs 1 session, round 2 needs 2, etc.)
+            if complete_sessions >= round_num and not has_incomplete:
+                skipped += 1
+                continue
+            
+            # Only print round header if there's work to do
+            if not round_has_work:
+                print(f"\n{'='*60}")
+                print(f"🔄 ROUND {round_num}/{config.SESSIONS_PER_COUNTRY}")
+                print(f"{'='*60}")
+                round_has_work = True
+            
+            print(f"\n📺 Session {session_counter}/{total_sessions} | {country} (#{complete_sessions + 1})")
             success = run_capture_session(account_id, country)
             
             if not success:
                 print("⚠️  Session failed, continuing to next...")
             
-            # Delay between sessions within a round
-            if country_idx < len(country_order) - 1:
-                random_delay(2, 5)
-        
+    if skipped > 0:
+        print(f"\n   (Skipped {skipped} already-completed sessions)")
+    
     print("\n" + "=" * 60)
     print(f"🎉 EXPERIMENT COMPLETE for {account_id}")
     print("=" * 60)
