@@ -198,7 +198,7 @@ SHORTS_PER_SESSION = 5
 
 # === PHASE 2: HOME FEED MEASUREMENT ===
 # After training, we measure what YouTube shows in the general home feed
-HOME_SESSIONS = 10
+HOME_SESSIONS = 20
 HOME_SHORTS_PER_SESSION = 20
 
 # === BROWSER SETTINGS ===
